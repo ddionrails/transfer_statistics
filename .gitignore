@@ -1,3 +1,5 @@
 .build
 .mypy_cache
 *.egg-info
+*.whl
+*.pyc
