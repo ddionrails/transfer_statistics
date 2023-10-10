@@ -47,3 +47,10 @@ def single_run(values, weights, indices_full) -> floating[Any]:
         lower_median = values[::-1][0]
 
     return mean([lower_median, upper_median])
+
+if __name__ == "__main__":
+    values = arange(1, 11)
+    weights = full(10, 1)
+    weights[9] = 7
+    indices = arange(0, 10)
+    print(single_run(values, weights, indices))
