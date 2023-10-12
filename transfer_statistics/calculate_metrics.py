@@ -33,8 +33,8 @@ def weighted_median(values, weights) -> floating[Any]:
     weights_total = sum(weights)
     weights_total_halfed = divide(sum(weights), 2)
 
-    lower_weights_cumulated: NDArray[float128] = weights[0]
-    upper_weights_cumulated: NDArray[float128] = weights_total - weights[0]
+    lower_weights_cumulated: float128 = float128(0)
+    upper_weights_cumulated: float128 = weights_total - weights[0]
     lower_median = None
     upper_median = None
 
@@ -50,24 +50,19 @@ def weighted_median(values, weights) -> floating[Any]:
             upper_weights_cumulated < weights_total_halfed or
             lower_weights_cumulated < weights_total_halfed and
             upper_weights_cumulated == weights_total_halfed):
-            lower_median = values[index]
-            upper_median = values[index+1]
-
-
-            print(f"{lower_weights_cumulated}, {upper_weights_cumulated}")
-            return float128(values[index])
-        
-    if upper_median:
-        return mean(array(lower_median, upper_median))
-
+            return mean([values[index], values[index+1]])
+        lower_weights_cumulated = add(lower_weights_cumulated, weights[index])
 
     return lower_median
 
 if __name__ == "__main__":
-    values = arange(1, 11)
     values = randint(1, 1000, 10000)
     weights = rand(10000)
     order = values.argsort()
     values = values[order]
     weights = weights[order]
+    values = arange(1, 11)
+    print(values)
+    weights = full(10, 1)
+    print(weights)
     print(bootstrap_median(values, weights, 1000))
