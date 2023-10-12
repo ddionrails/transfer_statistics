@@ -1,5 +1,5 @@
 from numpy.typing import NDArray
-from numpy import arange, float128, sort, sum, add, dtype, divide, mean, floating, full, subtract
+from numpy import arange, float128, sort, sum, add, dtype, divide, mean, floating, full, subtract, array, empty, quantile, multiply
 from numpy.random import choice, rand, randint
 from typing import Any
 
@@ -10,46 +10,64 @@ def bootstrap_median(values: NDArray[float128], weights: NDArray[float128], runs
     values = values[order]
     weights = weights[order]
 
-def single_run(values, weights, indices_full) -> floating[Any]:
-    sample_indices = sort(choice(indices_full, size=values.size))
-    sample = values[sample_indices]
-    print(sample)
-    print(weights)
-    sample_weights = weights[sample_indices]
-    sample_weights_reversed = sample_weights[::-1]
-    
-    weights_total = sum(sample_weights)
-    weights_total_halfed = divide(sum(sample_weights), 2)
+    median = weighted_median(values, weights)
 
-    lower_weights_cumulated: dtype[float128] = sample_weights[0]
-    upper_weights_cumulated: dtype[float128] = weights_total - sample_weights[0]
+    median_distribution = empty(runs)
+
+    for index, _ in enumerate(median_distribution):
+        sample_indices = sort(choice(indices_full, size=values.size))
+        sample: NDArray[float128] = values[sample_indices]
+        # print(f"c{*sample,}")
+        # print(f"c{*weights,}")
+        sample_weights = weights[sample_indices]
+        median_distribution[index] = weighted_median(sample, sample_weights)
+
+    quantiles = quantile(median_distribution, q=[0.025, 0.975])
+    lower_confidence = subtract(multiply(2, median), quantiles[1])
+    upper_confidence = subtract(multiply(2, median), quantiles[0])
+    return (median, lower_confidence, upper_confidence)
+
+def weighted_median(values, weights) -> floating[Any]:
+    """Calculate weighted median on already sorted values."""
+    
+    weights_total = sum(weights)
+    weights_total_halfed = divide(sum(weights), 2)
+
+    lower_weights_cumulated: NDArray[float128] = weights[0]
+    upper_weights_cumulated: NDArray[float128] = weights_total - weights[0]
     lower_median = None
     upper_median = None
 
-    print(weights_total_halfed)
 
-    # TODO: Figure out typing
-    for index in range(1, sample_weights.size -2):
-        upper_weights_cumulated = subtract(upper_weights_cumulated, sample_weights[index+1])
+    for index in range(1, weights.size -1):
+        upper_weights_cumulated = subtract(upper_weights_cumulated, weights[index+1])
 
-        if lower_weights_cumulated < weights_total_halfed and upper_weights_cumulated < weights_total_halfed:
+        if (lower_weights_cumulated < weights_total_halfed and
+            upper_weights_cumulated < weights_total_halfed):
+            lower_median = values[index]
+            break
+        if (lower_weights_cumulated == weights_total_halfed and
+            upper_weights_cumulated < weights_total_halfed or
+            lower_weights_cumulated < weights_total_halfed and
+            upper_weights_cumulated == weights_total_halfed):
+            lower_median = values[index]
+            upper_median = values[index+1]
+
+
             print(f"{lower_weights_cumulated}, {upper_weights_cumulated}")
-            return sample[index]
+            return float128(values[index])
+        
+    if upper_median:
+        return mean(array(lower_median, upper_median))
 
-        lower_weights_cumulated = add(lower_weights_cumulated, sample_weights[index])
-    if not upper_median:
-        upper_median = values[0]
-    if not lower_median:
-        lower_median = values[::-1][0]
 
-    return mean([lower_median, upper_median])
+    return lower_median
 
 if __name__ == "__main__":
     values = arange(1, 11)
-    values = randint(1, 1000, 100)
-    weights = rand(100)
+    values = randint(1, 1000, 10000)
+    weights = rand(10000)
     order = values.argsort()
     values = values[order]
     weights = weights[order]
-    indices = arange(0, 100)
-    print(single_run(values, weights, indices))
+    print(bootstrap_median(values, weights, 1000))
