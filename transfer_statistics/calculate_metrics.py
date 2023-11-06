@@ -1,10 +1,27 @@
-from numpy.typing import NDArray
-from numpy import arange, float128, sort, sum, add, dtype, divide, mean, floating, full, subtract, array, empty, quantile, multiply
-from numpy.random import choice, rand, randint
 from typing import Any
 
+from numpy import (
+    add,
+    arange,
+    divide,
+    empty,
+    float128,
+    floating,
+    full,
+    mean,
+    multiply,
+    quantile,
+    sort,
+    subtract,
+    sum,
+)
+from numpy.random import choice, rand, randint
+from numpy.typing import NDArray
 
-def bootstrap_median(values: NDArray[float128], weights: NDArray[float128], runs: int=200):
+
+def bootstrap_median(
+    values: NDArray[float128], weights: NDArray[float128], runs: int = 200
+):
     indices_full = arange(0, values.size)
     order = values.argsort()
     values = values[order]
@@ -27,33 +44,38 @@ def bootstrap_median(values: NDArray[float128], weights: NDArray[float128], runs
     upper_confidence = subtract(multiply(2, median), quantiles[0])
     return (median, lower_confidence, upper_confidence)
 
+
 def weighted_median(values, weights) -> floating[Any]:
     """Calculate weighted median on already sorted values."""
-    
+
     weights_total = sum(weights)
     weights_total_halfed = divide(sum(weights), 2)
 
     lower_weights_cumulated: float128 = float128(0)
     upper_weights_cumulated: float128 = weights_total - weights[0]
-    lower_median = None
-    upper_median = None
+    median = 0
 
+    for index in range(1, weights.size - 1):
+        upper_weights_cumulated = subtract(upper_weights_cumulated, weights[index + 1])
 
-    for index in range(1, weights.size -1):
-        upper_weights_cumulated = subtract(upper_weights_cumulated, weights[index+1])
-
-        if (lower_weights_cumulated < weights_total_halfed and
-            upper_weights_cumulated < weights_total_halfed):
-            lower_median = values[index]
+        if (
+            lower_weights_cumulated < weights_total_halfed
+            and upper_weights_cumulated < weights_total_halfed
+        ):
+            median = values[index]
             break
-        if (lower_weights_cumulated == weights_total_halfed and
-            upper_weights_cumulated < weights_total_halfed or
-            lower_weights_cumulated < weights_total_halfed and
-            upper_weights_cumulated == weights_total_halfed):
-            return mean([values[index], values[index+1]])
+        if (
+            lower_weights_cumulated == weights_total_halfed
+            and upper_weights_cumulated < weights_total_halfed
+            or lower_weights_cumulated < weights_total_halfed
+            and upper_weights_cumulated == weights_total_halfed
+        ):
+            median = mean([values[index], values[index + 1]])
+            break
         lower_weights_cumulated = add(lower_weights_cumulated, weights[index])
 
-    return lower_median
+    return median
+
 
 if __name__ == "__main__":
     values = randint(1, 1000, 10000)
