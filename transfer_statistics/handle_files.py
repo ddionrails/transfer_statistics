@@ -18,3 +18,9 @@ def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
                 )
             )
     return metadata
+
+
+def get_variable_combinations(metadata: VariableMetadata):
+    for group in metadata["group"]:
+        ...
+    ...
