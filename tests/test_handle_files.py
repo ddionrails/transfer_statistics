@@ -70,7 +70,7 @@ EXPECTED_METADATA: VariableMetadata = {
             "dataset": "p_statistics",
             "name": "bildungsniveau",
             "label": "",
-            "label_de": "Bildungsniveu",
+            "label_de": "Bildungsniveau",
         },
         {
             "dataset": "p_statistics",
@@ -90,6 +90,6 @@ EXPECTED_METADATA: VariableMetadata = {
 
 class TestHandleFiles(TestCase):
     def test_read_variables_metadata(self):
-        variables_csv = Path("./testdata/variables.csv").absolute()
+        variables_csv = Path("./tests/testdata/variables.csv").absolute()
         result = read_variable_metadata(variables_csv)
         self.assertDictEqual(EXPECTED_METADATA, result)
