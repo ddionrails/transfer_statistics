@@ -1,0 +1,13 @@
+study,dataset,variable,version,statistical_type,template_id,label,label_de,concept,type,description,description_de,minedition,statistics
+soep-core,p_statistics,age_gr,v37,group,,,Altersgruppe,,float,,,,True
+soep-core,p_statistics,agre,v37,numeric,,agreeableness,Verträglichkeit,,float,,,,True
+soep-core,p_statistics,bildungsniveau,v37,group,,,Bildungsniveau,_pgen_pgcasmin,float,,,,True
+soep-core,p_statistics,bmi,v37,numeric,,Body Mass Index (BMI),Body Mass Index (BMI),,float,,,,True
+soep-core,p_statistics,bula_h,v37,group,,,Bundesland,bula,byte,,,,True
+soep-core,p_statistics,conc,v37,numeric,,Conscientiousness,"Gewissenhaftigkeit ",,float,,,,True
+soep-core,p_statistics,corigin,v37,group,,Country of birth,Geburtsland,corigin,int,,,,True
+soep-core,p_statistics,d11109,v37,numeric,,Number of Years of Education,Jahre in Bildung,_pequiv_d11109,float,,,,True
+soep-core,p_statistics,e11102,v37,categorical,,Employment Status of Individual,Beschäftigungsstatus,_pequiv_e11102,byte,,,,True
+soep-core,p_statistics,e11103,v37,categorical,,Employment Level of Individual,Beschäftigungslevel,_pequiv_e11103,byte,,,,True
+soep-core,p_statistics,erwst,v37,categorical,,Employment Status,Erwerbsstatus,_pgen_pgemplst,float,,,,True
+soep-core,p_statistics,extr,v37,numeric,,Extraversion,Extraversion,,float,,,,True
