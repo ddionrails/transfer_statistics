@@ -4,7 +4,7 @@ from pathlib import Path
 from transfer_statistics.types import VariableMetadata, Variable
 
 
-def read_variable_metadata(metadata_file: Path):
+def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
     metadata: VariableMetadata = VariableMetadata(categorical=[], numeric=[], group=[])
     with open(metadata_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
