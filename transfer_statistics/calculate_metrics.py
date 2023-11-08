@@ -1,8 +1,12 @@
 from typing import Any
 
+from math import sqrt
+
+
 from numpy import (
     add,
     arange,
+    average,
     divide,
     empty,
     float128,
@@ -34,8 +38,6 @@ def bootstrap_median(
     for index, _ in enumerate(median_distribution):
         sample_indices = sort(choice(indices_full, size=values.size))
         sample: NDArray[float128] = values[sample_indices]
-        # print(f"c{*sample,}")
-        # print(f"c{*weights,}")
         sample_weights = weights[sample_indices]
         median_distribution[index] = weighted_median(sample, sample_weights)
 
@@ -45,7 +47,7 @@ def bootstrap_median(
     return (median, lower_confidence, upper_confidence)
 
 
-def weighted_median(values, weights) -> floating[Any]:
+def weighted_median(values: NDArray[float128], weights: NDArray[float128]) -> float128:
     """Calculate weighted median on already sorted values."""
 
     weights_total = sum(weights)
@@ -53,7 +55,7 @@ def weighted_median(values, weights) -> floating[Any]:
 
     lower_weights_cumulated: float128 = float128(0)
     upper_weights_cumulated: float128 = weights_total - weights[0]
-    median = 0
+    median = float128(0.0)
 
     for index in range(1, weights.size - 1):
         upper_weights_cumulated = subtract(upper_weights_cumulated, weights[index + 1])
@@ -77,14 +79,11 @@ def weighted_median(values, weights) -> floating[Any]:
     return median
 
 
-if __name__ == "__main__":
-    values = randint(1, 1000, 10000)
-    weights = rand(10000)
-    order = values.argsort()
-    values = values[order]
-    weights = weights[order]
-    values = arange(1, 11)
-    print(values)
-    weights = full(10, 1)
-    print(weights)
-    print(bootstrap_median(values, weights, 1000))
+def weighted_mean_and_confidence_interval(
+    values: NDArray[float128], weights: NDArray[float128]
+) -> tuple[float128, float128, float128]:
+    _average = average(values, weights=weights)
+    variance = average((values - _average) ** 2, weights=weights)
+    standard_deviation = sqrt(variance)
+    confidence_interval = 0.95 * (standard_deviation / sqrt(values.size))
+    return (_average, _average - confidence_interval, _average + confidence_interval)
