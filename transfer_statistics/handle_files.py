@@ -1,4 +1,5 @@
 from csv import DictReader
+from itertools import combinations
 from pathlib import Path
 
 from transfer_statistics.types import VariableMetadata, Variable
@@ -21,6 +22,10 @@ def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
 
 
 def get_variable_combinations(metadata: VariableMetadata):
-    for group in metadata["group"]:
-        ...
-    ...
+    group_combinations: list[tuple[Variable] | tuple[Variable, Variable]] = [
+        (variable,) for variable in metadata["group"]
+    ]
+    group_combinations.extend(
+        [variable for variable in combinations(metadata["group"], 2)]
+    )
+    return group_combinations
