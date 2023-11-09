@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from numpy import array
 
-from transfer_statistics.calculate_metrics import weighted_median, weighted_mean_and_confidence_interval
+from transfer_statistics.calculate_metrics import weighted_median, weighted_mean_and_confidence_interval, weighted_boxplot_sections
 
 
 class test_calculate_metrics(TestCase):
@@ -26,3 +26,18 @@ class test_calculate_metrics(TestCase):
         self.assertEqual(expected_mean, result[0])
         self.assertLess(expected_mean - result[1], 1)
         self.assertGreater(expected_mean - result[2], -1)
+
+    def test_weighted_boxplot_sections(self):
+        values = array([1, 2, 3, 4, 5])
+        weights = array([1, 1, 1, 1, 1])
+        expected_median = 3
+        result = weighted_boxplot_sections(values=values, weights=weights)
+        self.assertEqual(expected_median, result[1])
+        weights = array([2, 1, 1, 1, 1])
+        expected_median = 2.5
+        result = weighted_boxplot_sections(values=values, weights=weights)
+        self.assertEqual(expected_median, result[1])
+        weights = array([3, 1, 1, 1, 1])
+        expected_median = 2
+        result = weighted_boxplot_sections(values=values, weights=weights)
+        self.assertEqual(expected_median, result[1])
