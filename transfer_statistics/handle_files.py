@@ -25,7 +25,5 @@ def get_variable_combinations(metadata: VariableMetadata):
     group_combinations: list[tuple[Variable] | tuple[Variable, Variable]] = [
         (variable,) for variable in metadata["group"]
     ]
-    group_combinations.extend(
-        [variable for variable in combinations(metadata["group"], 2)]
-    )
+    group_combinations.extend(list(combinations(metadata["group"], 2)))
     return group_combinations

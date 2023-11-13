@@ -1,7 +1,6 @@
-from typing import Any
-
 from math import sqrt
 
+from numpy._typing._extended_precision import float128
 
 from numpy import (
     add,
@@ -10,7 +9,6 @@ from numpy import (
     average,
     divide,
     empty,
-    float128,
     mean,
     multiply,
     quantile,
@@ -18,9 +16,10 @@ from numpy import (
     interp,
     sort,
     subtract,
-    sum,
 )
-from numpy.random import choice, rand, randint
+from numpy import sum as numpy_sum
+
+from numpy.random import choice
 from numpy.typing import NDArray
 
 
@@ -51,8 +50,8 @@ def bootstrap_median(
 def weighted_median(values: NDArray[float128], weights: NDArray[float128]) -> float128:
     """Calculate weighted median on already sorted values."""
 
-    weights_total = sum(weights)
-    weights_total_halfed = divide(sum(weights), 2)
+    weights_total = numpy_sum(weights)
+    weights_total_halfed = divide(numpy_sum(weights), 2)
 
     lower_weights_cumulated: float128 = float128(0)
     upper_weights_cumulated: float128 = weights_total - weights[0]
@@ -89,7 +88,7 @@ def weighted_boxplot_sections(
     weights = array(weights)
 
     cumulated_quantiles = cumsum(weights) - 0.5 * weights
-    cumulated_quantiles = cumulated_quantiles / sum(weights)
+    cumulated_quantiles = cumulated_quantiles / numpy_sum(weights)
     _weighted_quartiles = interp(quantiles, cumulated_quantiles, values)
 
     inter_quartile_range = _weighted_quartiles[2] - _weighted_quartiles[0]
