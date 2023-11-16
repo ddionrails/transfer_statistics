@@ -3,10 +3,32 @@ from unittest import TestCase
 
 from transfer_statistics.handle_files import (
     read_variable_metadata,
+    read_value_label_metadata,
     get_variable_combinations,
 )
 
-from transfer_statistics.types import VariableMetadata
+from transfer_statistics.types import VariableMetadata, GroupingVariable
+
+EXPECTED_GROUPS = [
+    GroupingVariable(
+        variable="age_gr",
+        label="Altersgruppe",
+        value_labels=["17-29", "30-45", "46-65", "66"],
+        values=[1, 2, 3, 4],
+    ),
+    GroupingVariable(
+        variable="agre",
+        label="Bildungsniveau",
+        value_labels=[
+            "(noch) kein Abschluss",
+            "Hauptschule",
+            "Realschule",
+            "(Fach-)Abitur",
+            "AkademikerIn",
+        ],
+        values=[1, 2, 3, 4, 5],
+    ),
+]
 
 
 EXPECTED_METADATA: VariableMetadata = {
@@ -211,10 +233,23 @@ expected_combinations = [
 
 
 class TestHandleFiles(TestCase):
+
+    variables_csv: Path
+    variable_labels_csv: Path
+
+    def setUp(self) -> None:
+        self.variables_csv = Path("./tests/testdata/variables.csv").absolute()
+        self.variable_labels_csv = Path("./tests/testdata/variable_categories.csv").absolute()
+        return super().setUp()
+
     def test_read_variables_metadata(self):
-        variables_csv = Path("./tests/testdata/variables.csv").absolute()
-        result = read_variable_metadata(variables_csv)
+        result = read_variable_metadata(self.variables_csv)
         self.assertDictEqual(EXPECTED_METADATA, result)
+
+    def test_read_value_label_metadata(self):
+        metadata = read_variable_metadata(self.variables_csv)
+        result = read_value_label_metadata(self.variable_labels_csv, metadata)
+        self.assertEqual(EXPECTED_GROUPS, result)
 
     def test_get_variable_combinations(self):
         result = get_variable_combinations(EXPECTED_METADATA)

@@ -12,3 +12,9 @@ class VariableMetadata(TypedDict):
     categorical: list[Variable]
     numeric: list[Variable]
     group: list[Variable]
+
+class GroupingVariable(TypedDict):
+    variable: str
+    label: str
+    value_labels: list[str]
+    values: list[int]

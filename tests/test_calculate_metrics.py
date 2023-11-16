@@ -34,7 +34,7 @@ class test_calculate_metrics(TestCase):
         expected_mean = float(3)
         result = weighted_mean_and_confidence_interval(values=values, weights=weights)
         self.assertEqual(expected_mean, result["mean"])
-        self.assertLess(expected_mean - result["mean_lower_confidence"], 1)
+        self.assertLess(float(expected_mean - result["mean_lower_confidence"]), 1)
         self.assertGreater(expected_mean - result["mean_upper_confidence"], -1)
 
     def test_weighted_boxplot_sections(self):
