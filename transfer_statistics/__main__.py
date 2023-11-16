@@ -15,8 +15,6 @@ from transfer_statistics.calculate_metrics import (
 def calculate_numeric_statistics(
     data: DataFrame, metadata: VariableMetadata, output_folder: Path
 ) -> None:
-    return None
-    # TODO
     variable_combinations = get_variable_combinations(metadata=metadata)
 
     for group in variable_combinations:
@@ -25,10 +23,14 @@ def calculate_numeric_statistics(
         for variable_name in metadata["numeric"]:
             aggregated_dataframe = grouped_dataframe[
                 [*_grouping_names, variable_name]
-            ].apply(_apply_numeric_aggregations, variable_name=variable_name)
+            ].apply(
+                _apply_numeric_aggregations, variable_name=variable_name
+            )  # type: ignore
 
 
-def _apply_numeric_aggregations(grouped_data_frame: DataFrame, variable_name):
+def _apply_numeric_aggregations(
+    grouped_data_frame: DataFrame, variable_name
+) -> Series[float64]:
     grouped_data_frame = grouped_data_frame.sort_values(by=variable_name)
     values = grouped_data_frame[variable_name].to_numpy()
     weights = grouped_data_frame["weights"].to_numpy()
