@@ -23,27 +23,30 @@ def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
 
 def read_value_label_metadata(
     value_label_file: Path, variable_metadata: VariableMetadata
-) -> list[GroupingVariable]:
-    output: list[GroupingVariable] = []
-    current_variable = GroupingVariable(
-        variable="", label="", value_labels=[], values=[]
-    )
+) -> dict[tuple[str, str], GroupingVariable]:
+    output: dict[tuple[str, str], GroupingVariable] = {}
+    grouping_variables: dict[tuple[str, str], Variable] = {}
+    _id = ()
+
+    for variable in variable_metadata["group"]:
+        grouping_variables[(variable["dataset"], variable["name"])] = variable
+
     with open(value_label_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
         for line in reader:
-            if line["variable"] != current_variable["variable"]:
-                output.append(current_variable)
-                current_variable = GroupingVariable(
+            _id = (line["dataset"], line["variable"])
+            if _id not in grouping_variables:
+                continue
+            if _id not in output:
+                output[_id] = GroupingVariable(
                     variable=line["variable"],
-                    label="", # TODO: Change var_metadata be able to get that
-                    values=[line["value"]],
+                    label=grouping_variables[_id]["label_de"],
+                    values=[int(line["value"])],
                     value_labels=[line["label_de"]],
                 )
                 continue
-            current_variable["values"].append(int(line["value"]))
-            current_variable["value_labels"].append(line["label_de"])
-        output.append(current_variable)
-    output.pop(0)
+            output[_id]["values"].append(int(line["value"]))
+            output[_id]["value_labels"].append(line["label_de"])
     return output
 
 
