@@ -12,6 +12,8 @@ from transfer_statistics.calculate_metrics import (
     bootstrap_median,
 )
 
+# TODO: Cast Grouping variables to int
+
 
 def calculate_numeric_statistics(
     data: DataFrame, metadata: VariableMetadata, output_folder: Path
