@@ -20,8 +20,6 @@ from transfer_statistics.calculate_metrics import (
     bootstrap_median,
 )
 
-# TODO: Cast Grouping variables to int
-
 
 def _existing_path(path):
     output = Path(path).absolute()
