@@ -13,8 +13,15 @@ class VariableMetadata(TypedDict):
     numeric: list[Variable]
     group: list[Variable]
 
+
 class GroupingVariable(TypedDict):
     variable: str
     label: str
     value_labels: list[str]
     values: list[int]
+
+
+type Dataset = str
+type VariableName = str
+type VariableID = tuple[Dataset, VariableName]
+type ValueLabels = dict[VariableID, GroupingVariable]
