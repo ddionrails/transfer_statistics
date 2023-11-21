@@ -1,7 +1,10 @@
 from pathlib import Path
 from unittest import TestCase
 
+from pandas import DataFrame
+
 from transfer_statistics.handle_files import (
+    apply_value_labels,
     read_variable_metadata,
     read_value_label_metadata,
     get_variable_combinations,
@@ -10,13 +13,13 @@ from transfer_statistics.handle_files import (
 from transfer_statistics.types import VariableMetadata, GroupingVariable
 
 EXPECTED_GROUPS = {
-    ("p_statistics", "age_gr"): GroupingVariable(
+    "age_gr": GroupingVariable(
         variable="age_gr",
         label="Altersgruppe",
         values=[1, 2, 3, 4],
         value_labels=["17-29", "30-45", "46-65", "66"],
     ),
-    ("p_statistics", "bildungsniveau"): GroupingVariable(
+    "bildungsniveau": GroupingVariable(
         variable="bildungsniveau",
         label="Bildungsniveau",
         values=[1, 2, 3, 4, 5],
@@ -256,3 +259,41 @@ class TestHandleFiles(TestCase):
         result = get_variable_combinations(EXPECTED_METADATA)
 
         self.assertEqual(expected_combinations, result)
+
+    def test_apply_value_labels(self):
+        data = {
+            "syear": [1999, 1999, 1999],
+            "age_gr": [1, 2, 3],
+            "mean": [2, 3, 4],
+        }
+        expected_data = {
+            "syear": [1999, 1999, 1999],
+            "age_gr": ["17-29", "30-45", "46-65"],
+            "mean": [2, 3, 4],
+        }
+        dataframe_input = DataFrame(data)
+        expected_dataframe = DataFrame(expected_data)
+        grouping_input = ("age_gr",)
+        result = apply_value_labels(dataframe_input, EXPECTED_GROUPS, grouping_input)
+        self.assertTrue(expected_dataframe.equals(result))
+        data = {
+            "syear": [1999, 1999, 1999],
+            "age_gr": [1, 2, 3],
+            "bildungsniveau": [1, 1, 1],
+            "mean": [2, 3, 4],
+        }
+        expected_data = {
+            "syear": [1999, 1999, 1999],
+            "age_gr": ["17-29", "30-45", "46-65"],
+            "bildungsniveau": [
+                "(noch) kein Abschluss",
+                "(noch) kein Abschluss",
+                "(noch) kein Abschluss",
+            ],
+            "mean": [2, 3, 4],
+        }
+        dataframe_input = DataFrame(data)
+        expected_dataframe = DataFrame(expected_data)
+        grouping_input = ("age_gr", "bildungsniveau")
+        result = apply_value_labels(dataframe_input, EXPECTED_GROUPS, grouping_input)
+        self.assertTrue(expected_dataframe.equals(result))

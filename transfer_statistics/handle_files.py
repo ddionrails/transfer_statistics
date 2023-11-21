@@ -1,8 +1,24 @@
 from csv import DictReader
 from itertools import combinations
 from pathlib import Path
+from pandas import DataFrame
 
-from transfer_statistics.types import VariableMetadata, Variable, GroupingVariable
+from transfer_statistics.types import (
+    GroupingVariable,
+    ValueLabels,
+    Variable,
+    VariableMetadata,
+)
+
+
+def apply_value_labels(
+    dataframe: DataFrame, value_labels: ValueLabels, grouping_variables: tuple[str, ...]
+) -> DataFrame:
+    for variable in grouping_variables:
+        dataframe[variable] = dataframe[variable].replace(
+            value_labels[variable]["values"], value_labels[variable]["value_labels"]
+        )
+    return dataframe
 
 
 def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
@@ -23,18 +39,18 @@ def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
 
 def read_value_label_metadata(
     value_label_file: Path, variable_metadata: VariableMetadata
-) -> dict[tuple[str, str], GroupingVariable]:
-    output: dict[tuple[str, str], GroupingVariable] = {}
+) -> ValueLabels:
+    output: ValueLabels = {}
     grouping_variables: dict[tuple[str, str], Variable] = {}
     _id = ()
 
     for variable in variable_metadata["group"]:
-        grouping_variables[(variable["dataset"], variable["name"])] = variable
+        grouping_variables[variable["name"]] = variable
 
     with open(value_label_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
         for line in reader:
-            _id = (line["dataset"], line["variable"])
+            _id = line["variable"]
             if _id not in grouping_variables:
                 continue
             if _id not in output:

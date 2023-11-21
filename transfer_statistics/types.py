@@ -21,7 +21,6 @@ class GroupingVariable(TypedDict):
     values: list[int]
 
 
-type Dataset = str
 type VariableName = str
-type VariableID = tuple[Dataset, VariableName]
+type VariableID = VariableName
 type ValueLabels = dict[VariableID, GroupingVariable]
