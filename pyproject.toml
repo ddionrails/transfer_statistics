@@ -24,3 +24,6 @@ build-backend = "poetry.core.masonry.api"
 
 [mypy]
 plugins = "numpy.typing.mypy_plugin"
+
+[tool.poetry.scripts]
+transfer_statistics = "transfer_statistics.__main__:cli"

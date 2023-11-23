@@ -1,6 +1,7 @@
 from os import mkdir
 from pathlib import Path
 from shutil import rmtree
+from sys import argv
 
 from argparse import ArgumentParser
 from pandas import DataFrame, Series, read_stata
@@ -28,18 +29,18 @@ def _existing_path(path):
     raise FileNotFoundError(f"Path {output} does not exist.")
 
 
-def cli(args):
+def cli():
     parser = ArgumentParser(
         prog="Transfer Statistics Pipeline",
         description="Calculate Transfer Statistics",
     )
-    parser.add_argument("-d", "--dataset-path", type=_existing_path)
-    parser.add_argument("-n", "--dataset-name", type=str)
-    parser.add_argument("-m", "--metadata-path", type=_existing_path)
-    parser.add_argument("-o", "--output-path", type=_existing_path)
-    parser.add_argument("-w", "--weight-field-name", type=str)
+    parser.add_argument("-d", "--dataset-path", type=_existing_path, required=True)
+    parser.add_argument("-n", "--dataset-name", type=str, required=True)
+    parser.add_argument("-m", "--metadata-path", type=_existing_path, required=True)
+    parser.add_argument("-o", "--output-path", type=_existing_path, required=True)
+    parser.add_argument("-w", "--weight-field-name", type=str, required=True)
 
-    arguments = parser.parse_args(args)
+    arguments = parser.parse_args(argv)
     output_path = arguments.output_path
     numeric_output_path = output_path.join("numeric")
     metadata = read_variable_metadata(arguments.metadata_path.join("variables.csv"))
