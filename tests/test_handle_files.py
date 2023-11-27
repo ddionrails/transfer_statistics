@@ -55,7 +55,7 @@ EXPECTED_METADATA: VariableMetadata = {
             "label_de": "Erwerbsstatus",
         },
     ],
-    "numeric": [
+    "numerical": [
         {
             "dataset": "p_statistics",
             "name": "agre",

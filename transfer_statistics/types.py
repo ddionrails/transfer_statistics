@@ -10,7 +10,7 @@ class Variable(TypedDict):
 
 class VariableMetadata(TypedDict):
     categorical: list[Variable]
-    numeric: list[Variable]
+    numerical: list[Variable]
     group: list[Variable]
 
 

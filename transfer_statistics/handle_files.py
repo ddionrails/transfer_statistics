@@ -14,6 +14,7 @@ from transfer_statistics.types import (
 def apply_value_labels(
     dataframe: DataFrame, value_labels: ValueLabels, grouping_variables: tuple[str, ...]
 ) -> DataFrame:
+    dataframe = dataframe.reset_index(drop=True)
     for variable in grouping_variables:
         dataframe[variable] = dataframe[variable].replace(
             value_labels[variable]["values"], value_labels[variable]["value_labels"]
@@ -22,18 +23,19 @@ def apply_value_labels(
 
 
 def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
-    metadata: VariableMetadata = VariableMetadata(categorical=[], numeric=[], group=[])
+    metadata: VariableMetadata = VariableMetadata(categorical=[], numerical=[], group=[])
     with open(metadata_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
         for line in reader:
-            metadata[line["statistical_type"]].append(
-                Variable(
-                    dataset=line["dataset"],
-                    name=line["variable"],
-                    label=line["label"],
-                    label_de=line["label_de"],
+            if line["type"]:
+                metadata[line["type"]].append(
+                    Variable(
+                        dataset=line["dataset"],
+                        name=line["variable"],
+                        label=line["label"],
+                        label_de=line["label_de"],
+                    )
                 )
-            )
     return metadata
 
 

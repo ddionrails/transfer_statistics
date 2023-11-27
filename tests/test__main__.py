@@ -10,7 +10,7 @@ from transfer_statistics.calculate_metrics import weighted_boxplot_sections
 class TestMain(TestCase):
     simple_dataframe: DataFrame
 
-    def test_calculate_numeric_statistics(self):
+    def test_calculate_numerical_statistics(self):
         print(self.simple_dataframe)
 
         def _test(frame, variable_name):
