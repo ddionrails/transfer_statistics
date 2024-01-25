@@ -43,7 +43,9 @@ def cli():
     arguments = parser.parse_args(argv[1:])
     output_path: Path = arguments.output_path
     numerical_output_path = output_path.joinpath("numerical")
-    metadata = read_variable_metadata(arguments.metadata_path.joinpath("variables.csv"))
+    metadata = read_variable_metadata(
+        arguments.metadata_path.joinpath("variables.csv"), arguments.dataset_name
+    )
     value_labels = read_value_label_metadata(
         arguments.metadata_path.joinpath("variable_categories.csv"), metadata
     )

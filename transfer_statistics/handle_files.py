@@ -22,11 +22,13 @@ def apply_value_labels(
     return dataframe
 
 
-def read_variable_metadata(metadata_file: Path) -> VariableMetadata:
+def read_variable_metadata(metadata_file: Path, dataset_name: str) -> VariableMetadata:
     metadata: VariableMetadata = VariableMetadata(categorical=[], numerical=[], group=[])
     with open(metadata_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
         for line in reader:
+            if line["dataset"] != dataset_name:
+                continue
             if line["type"]:
                 metadata[line["type"]].append(
                     Variable(
