@@ -1,22 +1,27 @@
 from math import sqrt
 
+import numpy as np
+
 
 from numpy import (
     add,
     arange,
+    argsort,
     array,
     average,
+    cumsum,
     divide,
     empty,
     float64,
     mean,
     multiply,
     quantile,
-    cumsum,
     interp,
     sort,
+    searchsorted,
     subtract,
 )
+
 from numpy import sum as numpy_sum
 
 from numpy.random import choice
@@ -51,7 +56,21 @@ def bootstrap_median(
     }
 
 
-def weighted_median(values: NDArray[float64], weights: NDArray[float64]) -> float64:
+def weighted_median(values: NDArray[float64], weights: NDArray[float64]):
+    sorted_indices = argsort(values)
+    values_sorted = values[sorted_indices]
+    weights_sorted = weights[sorted_indices]
+
+    cum_weights = cumsum(weights_sorted)
+
+    median_index = searchsorted(cum_weights, numpy_sum(weights_sorted) / 2.0)
+
+    weighted_median_value = values_sorted[median_index]
+
+    return weighted_median_value
+
+
+def weighted_median_slow(values: NDArray[float64], weights: NDArray[float64]) -> float64:
     """Calculate weighted median on already sorted values."""
 
     weights_total = numpy_sum(weights)
