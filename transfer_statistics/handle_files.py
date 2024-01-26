@@ -72,7 +72,7 @@ def read_value_label_metadata(
 
 def get_variable_combinations(metadata: VariableMetadata):
     group_combinations: list[tuple[Variable] | tuple[Variable, Variable]] = [
-        (variable,) for variable in metadata["group"]
+        (variable,) for variable in metadata["group"] if variable["name"] != "syear"
     ]
     group_combinations.extend(list(combinations(metadata["group"], 2)))
     return group_combinations
