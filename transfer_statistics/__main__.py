@@ -7,6 +7,10 @@ from argparse import ArgumentParser
 from pandas import DataFrame, Series, read_stata
 from numpy import isnan, nan
 
+from pyinstrument import Profiler
+
+import multiprocessing
+
 
 from transfer_statistics.types import VariableMetadata
 from transfer_statistics.handle_files import (
@@ -75,27 +79,73 @@ def calculate_numerical_statistics(
             rmtree(variable_file_target)
         mkdir(variable_file_target)
 
+    pool = multiprocessing.Pool(processes=5)
     for group in variable_combinations:
         names = [variable["name"] for variable in group]
         _grouping_names = ["syear", *names]
-        for variable in metadata["numerical"]:
-            aggregated_dataframe = (
-                data[[*_grouping_names, variable["name"], weight_name]]
-                .groupby(_grouping_names)
-                .apply(
-                    _apply_numerical_aggregations,
-                    variable_name=variable["name"],
-                    weight_name=weight_name,
-                )
-            )  # type: ignore
-            aggregated_dataframe = apply_value_labels(
-                aggregated_dataframe, value_labels, names
+        general_arguments = {
+            "data": data,
+            "names": names,
+            "_grouping_names": _grouping_names,
+            "weight_name": weight_name,
+            "value_labels": value_labels,
+            "output_folder": output_folder,
+        }
+        arguments = [(variable, general_arguments) for variable in metadata["numerical"]]
+        pool.map(_calculate_one_variable, arguments)
+    pool.close()
+
+
+def calculate_one_variable(
+    data, names, _grouping_names, variable, weight_name, value_labels, output_folder
+):
+    aggregated_dataframe = (
+        data[[*_grouping_names, variable["name"], weight_name]]
+        .groupby(_grouping_names)
+        .apply(
+            _apply_numerical_aggregations,
+            variable_name=variable["name"],
+            weight_name=weight_name,
+        )
+    )  # type: ignore
+    aggregated_dataframe = apply_value_labels(aggregated_dataframe, value_labels, names)
+    group_file_name = "_".join(names)
+    file_name = output_folder.joinpath(variable["name"]).joinpath(
+        f"{variable['name']}_year_{group_file_name}.csv"
+    )
+    aggregated_dataframe.to_csv(file_name, index=False)
+
+
+def _calculate_one_variable(arguments):
+    variable = arguments[0]
+    args = arguments[1]
+
+    try:
+        aggregated_dataframe = (
+            args["data"][
+                [*args["_grouping_names"], variable["name"], args["weight_name"]]
+            ]
+            .groupby(args["_grouping_names"])
+            .apply(
+                _apply_numerical_aggregations,
+                variable_name=variable["name"],
+                weight_name=args["weight_name"],
             )
-            group_file_name = "_".join(names)
-            file_name = output_folder.joinpath(variable["name"]).joinpath(
-                f"{variable['name']}_year_{group_file_name}.csv"
-            )
-            aggregated_dataframe.to_csv(file_name, index=False)
+        )  # type: ignore
+        aggregated_dataframe = apply_value_labels(
+            aggregated_dataframe, args["value_labels"], args["names"]
+        )
+        group_file_name = "_".join(args["names"])
+        file_name = (
+            args["output_folder"]
+            .joinpath(variable["name"])
+            .joinpath(f"{variable['name']}_year_{group_file_name}.csv")
+        )
+        aggregated_dataframe.to_csv(file_name, index=False)
+    except ValueError:
+        print(variable)
+        print(args)
+        return None
 
 
 def _apply_numerical_aggregations(
