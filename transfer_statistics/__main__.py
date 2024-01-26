@@ -80,6 +80,18 @@ def calculate_numerical_statistics(
         mkdir(variable_file_target)
 
     pool = multiprocessing.Pool(processes=5)
+    names = []
+    _grouping_names = ["syear"]
+    general_arguments = {
+        "data": data,
+        "names": names,
+        "_grouping_names": _grouping_names,
+        "weight_name": weight_name,
+        "value_labels": value_labels,
+        "output_folder": output_folder,
+    }
+    arguments = [(variable, general_arguments) for variable in metadata["numerical"]]
+    pool.map(_calculate_one_variable, arguments)
     for group in variable_combinations:
         names = [variable["name"] for variable in group]
         _grouping_names = ["syear", *names]
