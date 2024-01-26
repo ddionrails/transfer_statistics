@@ -114,6 +114,7 @@ def calculate_one_variable(
         f"{variable['name']}_year_{group_file_name}.csv"
     )
     aggregated_dataframe.to_csv(file_name, index=False)
+    del aggregated_dataframe
 
 
 def _calculate_one_variable(arguments):
@@ -146,6 +147,7 @@ def _calculate_one_variable(arguments):
         print(variable)
         print(args)
         return None
+    return None
 
 
 def _apply_numerical_aggregations(
@@ -159,7 +161,6 @@ def _apply_numerical_aggregations(
     values = values[~isnan(values)]
     if values.size == 0:
         return None
-        return Series(EMPTY_RESULT.copy(), index=list(EMPTY_RESULT.keys()))
 
     output = weighted_mean_and_confidence_interval(values, weights)
     output = output | weighted_boxplot_sections(values, weights)
