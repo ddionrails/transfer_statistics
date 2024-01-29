@@ -17,7 +17,6 @@ from numpy import (
     multiply,
     quantile,
     interp,
-    sort,
     searchsorted,
     subtract,
 )
@@ -32,16 +31,13 @@ def bootstrap_median(
     values: NDArray[float64], weights: NDArray[float64], runs: int = 200
 ) -> dict[str, float64]:
     indices_full = arange(0, values.size)
-    order = values.argsort()
-    values = values[order]
-    weights = weights[order]
 
     median = weighted_median(values, weights)
 
     median_distribution = empty(runs)
 
     for index, _ in enumerate(median_distribution):
-        sample_indices = sort(choice(indices_full, size=values.size))
+        sample_indices = choice(indices_full, size=values.size)
         sample: NDArray[float64] = values[sample_indices]
         sample_weights = weights[sample_indices]
         median_distribution[index] = weighted_median(sample, sample_weights)
@@ -63,7 +59,7 @@ def weighted_median(values: NDArray[float64], weights: NDArray[float64]):
 
     cum_weights = cumsum(weights_sorted)
 
-    median_index = searchsorted(cum_weights, numpy_sum(weights_sorted) / 2.0)
+    median_index = searchsorted(cum_weights, cum_weights[-1] / 2.0)
 
     weighted_median_value = values_sorted[median_index]
 
