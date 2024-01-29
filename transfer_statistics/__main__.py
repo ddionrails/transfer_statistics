@@ -133,33 +133,29 @@ def _calculate_one_variable(arguments):
     variable = arguments[0]
     args = arguments[1]
 
-    try:
-        aggregated_dataframe = (
-            args["data"][
-                [*args["_grouping_names"], variable["name"], args["weight_name"]]
-            ]
-            .groupby(args["_grouping_names"])
-            .apply(
-                _apply_numerical_aggregations,
-                variable_name=variable["name"],
-                weight_name=args["weight_name"],
-            )
-        )  # type: ignore
-        aggregated_dataframe = apply_value_labels(
-            aggregated_dataframe, args["value_labels"], args["names"]
+    aggregated_dataframe = (
+        args["data"][[*args["_grouping_names"], variable["name"], args["weight_name"]]]
+        .groupby(args["_grouping_names"])
+        .apply(
+            _apply_numerical_aggregations,
+            variable_name=variable["name"],
+            weight_name=args["weight_name"],
         )
-        group_file_name = "_".join(args["names"])
-        file_name = (
-            args["output_folder"]
-            .joinpath(variable["name"])
-            .joinpath(f"{variable['name']}_year_{group_file_name}.csv")
-        )
-        aggregated_dataframe.to_csv(file_name, index=False)
-    except ValueError:
-        print(variable)
-        print(args)
-        return None
-    return None
+    )  # type: ignore
+    aggregated_dataframe = apply_value_labels(
+        aggregated_dataframe, args["value_labels"], args["names"]
+    )
+    group_file_name = "_".join(args["names"])
+    if group_file_name:
+        group_file_name = "_" + group_file_name
+
+    file_name = (
+        args["output_folder"]
+        .joinpath(variable["name"])
+        .joinpath(f"{variable['name']}_year{group_file_name}.csv")
+    )
+
+    aggregated_dataframe.to_csv(file_name, index=False)
 
 
 def _apply_numerical_aggregations(
