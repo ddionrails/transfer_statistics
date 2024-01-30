@@ -79,22 +79,9 @@ def calculate_numerical_statistics(
             rmtree(variable_file_target)
         mkdir(variable_file_target)
 
-    pool = multiprocessing.Pool(processes=5)
-    names = []
-    _grouping_names = ["syear"]
-    general_arguments = {
-        "data": data,
-        "names": names,
-        "_grouping_names": _grouping_names,
-        "weight_name": weight_name,
-        "value_labels": value_labels,
-        "output_folder": output_folder,
-    }
-    arguments = [(variable, general_arguments) for variable in metadata["numerical"]]
-    pool.map(_calculate_one_variable, arguments)
-    for group in variable_combinations:
-        names = [variable["name"] for variable in group]
-        _grouping_names = ["syear", *names]
+    with multiprocessing.Pool(processes=5) as pool:
+        names = []
+        _grouping_names = ["syear"]
         general_arguments = {
             "data": data,
             "names": names,
@@ -104,8 +91,22 @@ def calculate_numerical_statistics(
             "output_folder": output_folder,
         }
         arguments = [(variable, general_arguments) for variable in metadata["numerical"]]
-        pool.map(_calculate_one_variable, arguments)
-    pool.close()
+        pool.map(_calculate_one_variable_in_parallel, arguments)
+        for group in variable_combinations:
+            names = [variable["name"] for variable in group]
+            _grouping_names = ["syear", *names]
+            general_arguments = {
+                "data": data,
+                "names": names,
+                "_grouping_names": _grouping_names,
+                "weight_name": weight_name,
+                "value_labels": value_labels,
+                "output_folder": output_folder,
+            }
+            arguments = [
+                (variable, general_arguments) for variable in metadata["numerical"]
+            ]
+            pool.map(_calculate_one_variable_in_parallel, arguments)
 
 
 def calculate_one_variable(
@@ -129,7 +130,7 @@ def calculate_one_variable(
     del aggregated_dataframe
 
 
-def _calculate_one_variable(arguments):
+def _calculate_one_variable_in_parallel(arguments):
     variable = arguments[0]
     args = arguments[1]
 
