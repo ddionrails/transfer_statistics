@@ -7,8 +7,6 @@ from argparse import ArgumentParser
 from pandas import DataFrame, Series, read_stata
 from numpy import isnan, nan
 
-from pyinstrument import Profiler
-
 import multiprocessing
 
 

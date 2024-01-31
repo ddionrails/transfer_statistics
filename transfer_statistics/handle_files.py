@@ -15,6 +15,8 @@ def apply_value_labels(
     dataframe: DataFrame, value_labels: ValueLabels, grouping_variables: tuple[str, ...]
 ) -> DataFrame:
     dataframe = dataframe.reset_index(drop=False)
+    if "index" in dataframe.columns:
+        dataframe = dataframe.drop("index", axis=1)
     for variable in grouping_variables:
         dataframe[variable] = dataframe[variable].replace(
             value_labels[variable]["values"], value_labels[variable]["value_labels"]

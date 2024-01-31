@@ -11,3 +11,4 @@ soep-core,p_statistics,e11102,v37,categorical,,Employment Status of Individual,B
 soep-core,p_statistics,e11103,v37,categorical,,Employment Level of Individual,Beschäftigungslevel,_pequiv_e11103,,,,True
 soep-core,p_statistics,erwst,v37,categorical,,Employment Status,Erwerbsstatus,_pgen_pgemplst,,,,True
 soep-core,p_statistics,extr,v37,numerical,,Extraversion,Extraversion,,,,,True
+soep-core,h_statistics,ex,v37,numerical,,Extraversion,Extraversion,,,,,True

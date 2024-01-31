@@ -247,11 +247,11 @@ class TestHandleFiles(TestCase):
         return super().setUp()
 
     def test_read_variables_metadata(self):
-        result = read_variable_metadata(self.variables_csv)
+        result = read_variable_metadata(self.variables_csv, "p_statistics")
         self.assertDictEqual(EXPECTED_METADATA, result)
 
     def test_read_value_label_metadata(self):
-        metadata = read_variable_metadata(self.variables_csv)
+        metadata = read_variable_metadata(self.variables_csv, "p_statistics")
         result = read_value_label_metadata(self.variable_labels_csv, metadata)
         self.assertDictEqual(EXPECTED_GROUPS, result)
 
