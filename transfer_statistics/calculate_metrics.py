@@ -1,7 +1,5 @@
 from math import sqrt
 
-import numpy as np
-
 
 from numpy import (
     add,
