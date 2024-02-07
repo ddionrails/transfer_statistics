@@ -1,27 +1,25 @@
+import multiprocessing
+from argparse import ArgumentParser
 from os import mkdir
 from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from argparse import ArgumentParser
-from pandas import DataFrame, Series, read_stata
 from numpy import isnan, nan
+from pandas import DataFrame, Series, read_stata
 
-import multiprocessing
-
-
-from transfer_statistics.types import VariableMetadata
+from transfer_statistics.calculate_metrics import (
+    bootstrap_median,
+    weighted_boxplot_sections,
+    weighted_mean_and_confidence_interval,
+)
 from transfer_statistics.handle_files import (
     apply_value_labels,
     get_variable_combinations,
     read_value_label_metadata,
     read_variable_metadata,
 )
-from transfer_statistics.calculate_metrics import (
-    weighted_mean_and_confidence_interval,
-    weighted_boxplot_sections,
-    bootstrap_median,
-)
+from transfer_statistics.types import VariableMetadata
 
 MINIMAL_GROUP_SIZE = 30
 
@@ -90,7 +88,9 @@ def calculate_numerical_statistics(
             "value_labels": value_labels,
             "output_folder": output_folder,
         }
-        arguments = [(variable, general_arguments) for variable in metadata["numerical"]]
+        arguments = [
+            (variable, general_arguments) for variable in metadata["numerical"]
+        ]
         pool.map(_calculate_one_variable_in_parallel, arguments)
         for group in variable_combinations:
             names = [variable["name"] for variable in group]

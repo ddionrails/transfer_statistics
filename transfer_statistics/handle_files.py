@@ -1,6 +1,7 @@
 from csv import DictReader
 from itertools import combinations
 from pathlib import Path
+
 from pandas import DataFrame
 
 from transfer_statistics.types import (
@@ -25,7 +26,9 @@ def apply_value_labels(
 
 
 def read_variable_metadata(metadata_file: Path, dataset_name: str) -> VariableMetadata:
-    metadata: VariableMetadata = VariableMetadata(categorical=[], numerical=[], group=[])
+    metadata: VariableMetadata = VariableMetadata(
+        categorical=[], numerical=[], group=[]
+    )
     with open(metadata_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
         for line in reader:

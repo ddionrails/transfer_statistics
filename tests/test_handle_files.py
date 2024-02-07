@@ -5,12 +5,11 @@ from pandas import DataFrame
 
 from transfer_statistics.handle_files import (
     apply_value_labels,
-    read_variable_metadata,
-    read_value_label_metadata,
     get_variable_combinations,
+    read_value_label_metadata,
+    read_variable_metadata,
 )
-
-from transfer_statistics.types import VariableMetadata, GroupingVariable
+from transfer_statistics.types import GroupingVariable, VariableMetadata
 
 EXPECTED_GROUPS = {
     "age_gr": GroupingVariable(

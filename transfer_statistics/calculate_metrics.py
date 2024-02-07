@@ -1,6 +1,5 @@
 from math import sqrt
 
-
 from numpy import (
     add,
     arange,
@@ -11,16 +10,14 @@ from numpy import (
     divide,
     empty,
     float64,
+    interp,
     mean,
     multiply,
     quantile,
-    interp,
     searchsorted,
     subtract,
 )
-
 from numpy import sum as numpy_sum
-
 from numpy.random import choice
 from numpy.typing import NDArray
 
@@ -64,7 +61,9 @@ def weighted_median(values: NDArray[float64], weights: NDArray[float64]):
     return weighted_median_value
 
 
-def weighted_median_slow(values: NDArray[float64], weights: NDArray[float64]) -> float64:
+def weighted_median_slow(
+    values: NDArray[float64], weights: NDArray[float64]
+) -> float64:
     """Calculate weighted median on already sorted values."""
 
     weights_total = numpy_sum(weights)
