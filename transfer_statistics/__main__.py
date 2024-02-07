@@ -23,6 +23,8 @@ from transfer_statistics.calculate_metrics import (
     bootstrap_median,
 )
 
+MINIMAL_GROUP_SIZE = 30
+
 
 def _existing_path(path):
     output = Path(path).absolute()
@@ -166,12 +168,14 @@ def _apply_numerical_aggregations(
     # TODO: What to do with Missings?
     weights = weights[~isnan(values)]
     values = values[~isnan(values)]
-    if values.size == 0:
+
+    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
         return None
 
     output = weighted_mean_and_confidence_interval(values, weights)
     output = output | weighted_boxplot_sections(values, weights)
     output = output | bootstrap_median(values, weights)
+    output = output | {"n": values.size}
     return Series(output, index=list(output.keys()))
 
 
