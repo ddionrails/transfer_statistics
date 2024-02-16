@@ -22,6 +22,7 @@ from transfer_statistics.handle_files import (
 from transfer_statistics.types import VariableMetadata
 
 MINIMAL_GROUP_SIZE = 30
+PROCESSES = 5
 
 
 def _existing_path(path):
@@ -45,6 +46,7 @@ def cli():
     arguments = parser.parse_args(argv[1:])
     output_path: Path = arguments.output_path
     numerical_output_path = output_path.joinpath("numerical")
+    categorical_output_path = output_path.joinpath("categorical")
     metadata = read_variable_metadata(
         arguments.metadata_path.joinpath("variables.csv"), arguments.dataset_name
     )
@@ -60,6 +62,14 @@ def cli():
     )
 
 
+def _create_variable_folders(variables, output_folder):
+    for variable in variables:
+        variable_file_target = output_folder.joinpath(variable["name"])
+        if variable_file_target.exists():
+            rmtree(variable_file_target)
+        mkdir(variable_file_target)
+
+
 def calculate_numerical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
@@ -67,17 +77,26 @@ def calculate_numerical_statistics(
     output_folder: Path,
     weight_name: str,
 ) -> None:
+    calculate_statistics(
+        data, metadata, value_labels, output_folder, weight_name, "numerical"
+    )
+
+
+def calculate_statistics(
+    data: DataFrame,
+    metadata: VariableMetadata,
+    value_labels,
+    output_folder: Path,
+    weight_name: str,
+    type: str,
+) -> None:
     if not output_folder.exists():
         mkdir(output_folder)
     variable_combinations = get_variable_combinations(metadata=metadata)
 
-    for variable in metadata["numerical"]:
-        variable_file_target = output_folder.joinpath(variable["name"])
-        if variable_file_target.exists():
-            rmtree(variable_file_target)
-        mkdir(variable_file_target)
+    _create_variable_folders(metadata[type], output_folder)
 
-    with multiprocessing.Pool(processes=5) as pool:
+    with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
         _grouping_names = ["syear"]
         general_arguments = {
@@ -88,10 +107,11 @@ def calculate_numerical_statistics(
             "value_labels": value_labels,
             "output_folder": output_folder,
         }
-        arguments = [
-            (variable, general_arguments) for variable in metadata["numerical"]
-        ]
-        pool.map(_calculate_one_variable_in_parallel, arguments)
+        arguments = [(variable, general_arguments) for variable in metadata[type]]
+        calculation_function = _calculate_one_numerical_variable_in_parallel
+        if type == "categorical":
+            calculation_function = _calculate_one_categorical_variable_in_parallel
+        pool.map(calculation_function, arguments)
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
             _grouping_names = ["syear", *names]
@@ -106,7 +126,7 @@ def calculate_numerical_statistics(
             arguments = [
                 (variable, general_arguments) for variable in metadata["numerical"]
             ]
-            pool.map(_calculate_one_variable_in_parallel, arguments)
+            pool.map(calculation_function, arguments)
 
 
 def calculate_one_variable(
@@ -130,7 +150,10 @@ def calculate_one_variable(
     del aggregated_dataframe
 
 
-def _calculate_one_variable_in_parallel(arguments):
+def _calculate_one_categorical_variable_in_parallel(arguments): ...
+
+
+def _calculate_one_numerical_variable_in_parallel(arguments):
     variable = arguments[0]
     args = arguments[1]
 

@@ -9,7 +9,11 @@ from transfer_statistics.calculate_metrics import (
 )
 
 
-class test_calculate_metrics(TestCase):
+class test_categorical_metrics(TestCase):
+    def test_percent(self): ...
+
+
+class test_calculate_numerical_metrics(TestCase):
     def test_weighted_median(self):
         values = array([1, 2, 3, 4, 5])
         weights = array([1, 1, 1, 1, 1])
