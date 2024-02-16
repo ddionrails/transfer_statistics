@@ -19,7 +19,7 @@ from transfer_statistics.handle_files import (
     read_value_label_metadata,
     read_variable_metadata,
 )
-from transfer_statistics.types import VariableMetadata
+from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 5
@@ -88,13 +88,13 @@ def calculate_statistics(
     value_labels,
     output_folder: Path,
     weight_name: str,
-    type: str,
+    statistical_type: str,
 ) -> None:
     if not output_folder.exists():
         mkdir(output_folder)
     variable_combinations = get_variable_combinations(metadata=metadata)
 
-    _create_variable_folders(metadata[type], output_folder)
+    _create_variable_folders(metadata[statistical_type], output_folder)
 
     with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
@@ -102,14 +102,16 @@ def calculate_statistics(
         general_arguments = {
             "data": data,
             "names": names,
-            "_grouping_names": _grouping_names,
+            "grouping_names": _grouping_names,
             "weight_name": weight_name,
             "value_labels": value_labels,
             "output_folder": output_folder,
         }
-        arguments = [(variable, general_arguments) for variable in metadata[type]]
+        arguments = [
+            (variable, general_arguments) for variable in metadata[statistical_type]
+        ]
         calculation_function = _calculate_one_numerical_variable_in_parallel
-        if type == "categorical":
+        if statistical_type == "categorical":
             calculation_function = _calculate_one_categorical_variable_in_parallel
         pool.map(calculation_function, arguments)
         for group in variable_combinations:
@@ -118,7 +120,7 @@ def calculate_statistics(
             general_arguments = {
                 "data": data,
                 "names": names,
-                "_grouping_names": _grouping_names,
+                "grouping_names": _grouping_names,
                 "weight_name": weight_name,
                 "value_labels": value_labels,
                 "output_folder": output_folder,
@@ -150,16 +152,20 @@ def calculate_one_variable(
     del aggregated_dataframe
 
 
-def _calculate_one_categorical_variable_in_parallel(arguments): ...
+def _calculate_one_categorical_variable_in_parallel(
+    arguments: tuple[Variable, GeneralArguments]
+): ...
 
 
-def _calculate_one_numerical_variable_in_parallel(arguments):
+def _calculate_one_numerical_variable_in_parallel(
+    arguments: tuple[Variable, GeneralArguments]
+):
     variable = arguments[0]
     args = arguments[1]
 
     aggregated_dataframe = (
-        args["data"][[*args["_grouping_names"], variable["name"], args["weight_name"]]]
-        .groupby(args["_grouping_names"])
+        args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
+        .groupby(args["grouping_names"])
         .apply(
             _apply_numerical_aggregations,
             variable_name=variable["name"],

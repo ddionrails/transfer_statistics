@@ -1,4 +1,7 @@
+from pathlib import Path
 from typing import TypedDict
+
+from pandas import DataFrame
 
 
 class Variable(TypedDict):
@@ -24,3 +27,12 @@ class GroupingVariable(TypedDict):
 type VariableName = str
 type VariableID = VariableName
 type ValueLabels = dict[VariableID, GroupingVariable]
+
+
+class GeneralArguments(TypedDict):
+    data: DataFrame
+    names: list[str]
+    grouping_names: list[str]
+    weight_name: str
+    value_labels: ValueLabels
+    output_folder: Path
