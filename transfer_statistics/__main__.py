@@ -60,6 +60,9 @@ def cli():
     calculate_numerical_statistics(
         data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
     )
+    calculate_categorical_statistics(
+        data, metadata, value_labels, categorical_output_path
+    )
 
 
 def _create_variable_folders(variables, output_folder):
@@ -80,6 +83,15 @@ def calculate_numerical_statistics(
     calculate_statistics(
         data, metadata, value_labels, output_folder, weight_name, "numerical"
     )
+
+
+def calculate_categorical_statistics(
+    data: DataFrame,
+    metadata: VariableMetadata,
+    value_labels,
+    output_folder: Path,
+) -> None:
+    calculate_statistics(data, metadata, value_labels, output_folder, "", "categorical")
 
 
 def calculate_statistics(
@@ -154,7 +166,17 @@ def calculate_one_variable(
 
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[Variable, GeneralArguments]
-): ...
+):
+    variable = arguments[0]
+    args = arguments[1]
+
+    aggregated_dataframe = (
+        args["data"][[*args["grouping_names"], variable["name"]]]
+        .groupby(args["grouping_names"])
+        .value_counts(normalize=True)
+    )
+
+    _save_dataframe(aggregated_dataframe, args, variable)
 
 
 def _calculate_one_numerical_variable_in_parallel(
@@ -172,6 +194,10 @@ def _calculate_one_numerical_variable_in_parallel(
             weight_name=args["weight_name"],
         )
     )  # type: ignore
+    _save_dataframe(aggregated_dataframe, args, variable)
+
+
+def _save_dataframe(aggregated_dataframe, args, variable):
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, args["value_labels"], args["names"]
     )
