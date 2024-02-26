@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import full, isnan, nan
+from numpy import full, isnan, nan, sqrt
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
@@ -23,6 +23,7 @@ from transfer_statistics.types import GeneralArguments, Variable, VariableMetada
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
+z_alpha = 1.96
 
 
 def _existing_path(path):
@@ -180,8 +181,22 @@ def _calculate_one_categorical_variable_in_parallel(
     aggregated_dataframe = aggregated_dataframe.merge(
         population, left_on="syear", right_on="syear"
     )
+    aggregated_dataframe[["lower_confidence", "upper_confidence"]] = (
+        aggregated_dataframe.apply(
+            _calculate_population_confidence_interval, axis=1, args=("proportion", "n")
+        )
+    )
 
     _save_dataframe(aggregated_dataframe, args, variable)
+
+
+def _calculate_population_confidence_interval(row, proportion_column, n_column):
+
+    p = row[proportion_column]
+    q = 1 - p
+    n = row[n_column]
+    stderr = z_alpha * sqrt(p * q / n)
+    return Series({"lower_confidence": p - stderr, "upper_confidence": p + stderr})
 
 
 def _calculate_one_numerical_variable_in_parallel(
