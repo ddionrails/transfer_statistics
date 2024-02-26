@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import isnan, nan
+from numpy import full, isnan, nan
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
@@ -22,7 +22,7 @@ from transfer_statistics.handle_files import (
 from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
 
 MINIMAL_GROUP_SIZE = 30
-PROCESSES = 5
+PROCESSES = 4
 
 
 def _existing_path(path):
@@ -57,11 +57,11 @@ def cli():
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
 
-    calculate_numerical_statistics(
-        data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
-    )
     calculate_categorical_statistics(
         data, metadata, value_labels, categorical_output_path
+    )
+    calculate_numerical_statistics(
+        data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
     )
 
 
@@ -138,7 +138,7 @@ def calculate_statistics(
                 "output_folder": output_folder,
             }
             arguments = [
-                (variable, general_arguments) for variable in metadata["numerical"]
+                (variable, general_arguments) for variable in metadata[statistical_type]
             ]
             pool.map(calculation_function, arguments)
 
@@ -172,8 +172,13 @@ def _calculate_one_categorical_variable_in_parallel(
 
     aggregated_dataframe = (
         args["data"][[*args["grouping_names"], variable["name"]]]
-        .groupby(args["grouping_names"])
+        .groupby("syear")
         .value_counts(normalize=True)
+        .reset_index()
+    )
+    population = args["data"]["syear"].value_counts().rename("n")
+    aggregated_dataframe = aggregated_dataframe.merge(
+        population, left_on="syear", right_on="syear"
     )
 
     _save_dataframe(aggregated_dataframe, args, variable)
