@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pandas import DataFrame
 
+from transfer_statistics.__main__ import YEAR_COLUMN
+
 from transfer_statistics.types import (
     GroupingVariable,
     ValueLabels,
@@ -77,7 +79,7 @@ def get_variable_combinations(metadata: VariableMetadata):
     group: list[Variable] = []
     group_combinations: list[tuple[Variable] | tuple[Variable, Variable]] = []
     for variable in metadata["group"]:
-        if variable["name"] != "syear":
+        if variable["name"] != YEAR_COLUMN:
             group.append(variable)
             group_combinations.append((variable,))
 

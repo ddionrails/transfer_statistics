@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import full, isnan, nan, sqrt
+from numpy import isnan, nan, sqrt
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
@@ -20,6 +20,10 @@ from transfer_statistics.handle_files import (
     read_variable_metadata,
 )
 from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
+
+
+INCOMING_YEAR_COLUMN = "syear"
+YEAR_COLUMN = "year"
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
@@ -57,6 +61,7 @@ def cli():
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
+    data.rename({INCOMING_YEAR_COLUMN: YEAR_COLUMN})
 
     calculate_categorical_statistics(
         data, metadata, value_labels, categorical_output_path
@@ -111,7 +116,7 @@ def calculate_statistics(
 
     with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
-        _grouping_names = ["syear"]
+        _grouping_names = [YEAR_COLUMN]
         general_arguments = {
             "data": data,
             "names": names,
@@ -127,9 +132,11 @@ def calculate_statistics(
         if statistical_type == "categorical":
             calculation_function = _calculate_one_categorical_variable_in_parallel
         pool.map(calculation_function, arguments)
+        arguments["type"] = statistical_type
+
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
-            _grouping_names = ["syear", *names]
+            _grouping_names = [YEAR_COLUMN, *names]
             general_arguments = {
                 "data": data,
                 "names": names,
@@ -173,13 +180,13 @@ def _calculate_one_categorical_variable_in_parallel(
 
     aggregated_dataframe = (
         args["data"][[*args["grouping_names"], variable["name"]]]
-        .groupby("syear")
+        .groupby(YEAR_COLUMN)
         .value_counts(normalize=True)
         .reset_index()
     )
-    population = args["data"]["syear"].value_counts().rename("n")
+    population = args["data"][YEAR_COLUMN].value_counts().rename("n")
     aggregated_dataframe = aggregated_dataframe.merge(
-        population, left_on="syear", right_on="syear"
+        population, left_on=YEAR_COLUMN, right_on=YEAR_COLUMN
     )
     aggregated_dataframe[["lower_confidence", "upper_confidence"]] = (
         aggregated_dataframe.apply(
