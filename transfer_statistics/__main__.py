@@ -8,6 +8,8 @@ from sys import argv
 from numpy import isnan, nan, sqrt
 from pandas import DataFrame, Series, read_stata
 
+from transfer_statistics.handle_metadata import create_metadata_file
+
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
     weighted_boxplot_sections,
@@ -19,15 +21,19 @@ from transfer_statistics.handle_files import (
     read_value_label_metadata,
     read_variable_metadata,
 )
-from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
+from transfer_statistics.types import (
+    GeneralArguments,
+    Variable,
+    VariableMetadata,
+    YEAR_COLUMN,
+)
 
 
 INCOMING_YEAR_COLUMN = "syear"
-YEAR_COLUMN = "year"
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
-z_alpha = 1.96
+Z_ALPHA = 1.96
 
 
 def _existing_path(path):
@@ -61,7 +67,7 @@ def cli():
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
-    data.rename({INCOMING_YEAR_COLUMN: YEAR_COLUMN})
+    data = data.rename(columns={INCOMING_YEAR_COLUMN: YEAR_COLUMN})
 
     calculate_categorical_statistics(
         data, metadata, value_labels, categorical_output_path
@@ -117,7 +123,7 @@ def calculate_statistics(
     with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
         _grouping_names = [YEAR_COLUMN]
-        general_arguments = {
+        general_arguments: GeneralArguments = {
             "data": data,
             "names": names,
             "grouping_names": _grouping_names,
@@ -131,8 +137,10 @@ def calculate_statistics(
         calculation_function = _calculate_one_numerical_variable_in_parallel
         if statistical_type == "categorical":
             calculation_function = _calculate_one_categorical_variable_in_parallel
+        for argument in arguments:
+            create_metadata_file(argument)
+        pool.map(create_metadata_file, arguments)
         pool.map(calculation_function, arguments)
-        arguments["type"] = statistical_type
 
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
@@ -202,7 +210,7 @@ def _calculate_population_confidence_interval(row, proportion_column, n_column):
     p = row[proportion_column]
     q = 1 - p
     n = row[n_column]
-    stderr = z_alpha * sqrt(p * q / n)
+    stderr = Z_ALPHA * sqrt(p * q / n)
     return Series({"lower_confidence": p - stderr, "upper_confidence": p + stderr})
 
 

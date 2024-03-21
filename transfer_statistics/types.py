@@ -3,6 +3,8 @@ from typing import TypedDict
 
 from pandas import DataFrame
 
+YEAR_COLUMN = "year"
+
 
 class Variable(TypedDict):
     dataset: str
@@ -37,3 +39,15 @@ class GeneralArguments(TypedDict):
     weight_name: str
     value_labels: ValueLabels
     output_folder: Path
+
+
+class MetadataFile(TypedDict):
+    dataset: str
+    title: str
+    label: str
+    label_de: str
+    variable: str
+    dimensions: list[GroupingVariable]
+    groups: list[GroupingVariable]
+    start_year: int
+    end_year: int

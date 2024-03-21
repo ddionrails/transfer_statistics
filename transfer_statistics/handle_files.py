@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pandas import DataFrame
 
-from transfer_statistics.__main__ import YEAR_COLUMN
+from transfer_statistics.types import YEAR_COLUMN
 
 from transfer_statistics.types import (
     GroupingVariable,
