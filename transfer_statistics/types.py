@@ -20,6 +20,7 @@ class VariableMetadata(TypedDict):
 class GroupingVariable(TypedDict):
     variable: str
     label: str
+    label_de: str
     value_labels: list[str]
     values: list[int]
 

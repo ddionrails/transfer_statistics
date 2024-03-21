@@ -65,7 +65,8 @@ def read_value_label_metadata(
             if _id not in output:
                 output[_id] = GroupingVariable(
                     variable=line["variable"],
-                    label=grouping_variables[_id]["label_de"],
+                    label=grouping_variables[_id]["label"],
+                    label_de=grouping_variables[_id]["label_de"],
                     values=[int(line["value"])],
                     value_labels=[line["label_de"]],
                 )
