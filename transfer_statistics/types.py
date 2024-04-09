@@ -3,8 +3,6 @@ from typing import TypedDict
 
 from pandas import DataFrame
 
-YEAR_COLUMN = "year"
-
 
 class Variable(TypedDict):
     dataset: str

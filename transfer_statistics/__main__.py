@@ -25,11 +25,8 @@ from transfer_statistics.types import (
     GeneralArguments,
     Variable,
     VariableMetadata,
-    YEAR_COLUMN,
 )
 
-
-INCOMING_YEAR_COLUMN = "syear"
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
@@ -69,7 +66,7 @@ def cli():
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
-    data = data.rename(columns={INCOMING_YEAR_COLUMN: YEAR_COLUMN})
+    # data = data.rename(columns={"syear": "syear"})
 
     calculate_categorical_statistics(
         data, metadata, value_labels, categorical_output_path
@@ -124,7 +121,7 @@ def calculate_statistics(
 
     with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
-        _grouping_names = [YEAR_COLUMN]
+        _grouping_names = ["syear"]
         general_arguments: GeneralArguments = {
             "data": data,
             "names": names,
@@ -139,14 +136,12 @@ def calculate_statistics(
         calculation_function = _calculate_one_numerical_variable_in_parallel
         if statistical_type == "categorical":
             calculation_function = _calculate_one_categorical_variable_in_parallel
-        for argument in arguments:
-            create_metadata_file(argument)
         pool.map(create_metadata_file, arguments)
         pool.map(calculation_function, arguments)
 
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
-            _grouping_names = [YEAR_COLUMN, *names]
+            _grouping_names = ["syear", *names]
             general_arguments = {
                 "data": data,
                 "names": names,
@@ -178,6 +173,7 @@ def calculate_one_variable(
     file_name = output_folder.joinpath(variable["name"]).joinpath(
         f"{variable['name']}_year_{group_file_name}.csv"
     )
+    aggregated_dataframe = aggregated_dataframe.rename(columns={"syear": "year"})
     aggregated_dataframe.to_csv(file_name, index=False)
     del aggregated_dataframe
 
@@ -191,11 +187,11 @@ def _calculate_one_categorical_variable_in_parallel(
     data = data[[*args["grouping_names"], variable["name"]]]
 
     aggregated_dataframe = (
-        data.groupby(INCOMING_YEAR_COLUMN).value_counts(normalize=True).reset_index()
+        data.groupby("syear").value_counts(normalize=True).reset_index()
     )
-    population = args["data"][YEAR_COLUMN].value_counts().rename("n")
+    population = args["data"]["syear"].value_counts().rename("n")
     aggregated_dataframe = aggregated_dataframe.merge(
-        population, left_on=YEAR_COLUMN, right_on=YEAR_COLUMN
+        population, left_on="syear", right_on="syear"
     )
     aggregated_dataframe[["lower_confidence", "upper_confidence"]] = (
         aggregated_dataframe.apply(
@@ -252,6 +248,8 @@ def _save_dataframe(aggregated_dataframe, args, variable):
         .joinpath(variable["name"])
         .joinpath(f"{variable['name']}_year{group_file_name}.csv")
     )
+
+    aggregated_dataframe.rename(columns={"syear": "year"}, inplace=True)
 
     aggregated_dataframe.to_csv(file_name, index=False)
 

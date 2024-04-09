@@ -17,6 +17,6 @@ class TestMain(TestCase):
             frame = frame.sort_values(by=[variable_name])
             return weighted_boxplot_sections(frame[variable_name], frame["weight"])
 
-        rest = self.simple_dataframe.groupby(by=["syear", "group"])
+        rest = self.simple_dataframe.groupby(by=["year", "group"])
         rest.apply(_test, variable_name="number")
         print(rest)

@@ -2,8 +2,6 @@ from json import dump
 
 from pandas import DataFrame, to_numeric
 
-from transfer_statistics.types import YEAR_COLUMN
-
 
 from transfer_statistics.types import (
     GeneralArguments,
@@ -14,7 +12,7 @@ from transfer_statistics.types import (
 
 
 def _get_start_and_end_year(data: DataFrame):
-    years = to_numeric(data[data.notnull()][YEAR_COLUMN])
+    years = to_numeric(data[data.notnull()]["syear"])
     return int(years.min()), int(years.max())
 
 

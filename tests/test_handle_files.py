@@ -263,12 +263,12 @@ class TestHandleFiles(TestCase):
 
     def test_apply_value_labels(self):
         data = {
-            "syear": [1999, 1999, 1999],
+            "year": [1999, 1999, 1999],
             "age_gr": [1, 2, 3],
             "mean": [2, 3, 4],
         }
         expected_data = {
-            "syear": [1999, 1999, 1999],
+            "year": [1999, 1999, 1999],
             "age_gr": ["17-29", "30-45", "46-65"],
             "mean": [2, 3, 4],
         }
@@ -278,13 +278,13 @@ class TestHandleFiles(TestCase):
         result = apply_value_labels(dataframe_input, EXPECTED_GROUPS, grouping_input)
         self.assertTrue(expected_dataframe.equals(result))
         data = {
-            "syear": [1999, 1999, 1999],
+            "year": [1999, 1999, 1999],
             "age_gr": [1, 2, 3],
             "bildungsniveau": [1, 1, 1],
             "mean": [2, 3, 4],
         }
         expected_data = {
-            "syear": [1999, 1999, 1999],
+            "year": [1999, 1999, 1999],
             "age_gr": ["17-29", "30-45", "46-65"],
             "bildungsniveau": [
                 "(noch) kein Abschluss",
