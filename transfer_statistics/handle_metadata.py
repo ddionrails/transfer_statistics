@@ -25,14 +25,25 @@ def create_metadata_file(arguments: tuple[Variable, GeneralArguments]):
     output_file = output_folder.joinpath("meta.json")
     value_labels: ValueLabels = arguments[1]["value_labels"]
     groups = list(value_labels.values())
-    start_year, end_year = _get_start_and_end_year(data[[YEAR_COLUMN, variable["name"]]])
+    dimensions = []
+    for group in groups:
+        dimensions.append(
+            {
+                "variable": group["variable"],
+                "label": group["label"],
+                "label_de": group["label_de"],
+                "values": group["values"],
+                "labels": group["value_labels"],
+            }
+        )
+    start_year, end_year = _get_start_and_end_year(data[["syear", variable["name"]]])
     metadata: MetadataFile = {
         "dataset": variable["dataset"],
         "title": variable["label"],
         "label": variable["label"],
         "label_de": variable["label_de"],
         "variable": variable["name"],
-        "dimensions": groups,
+        "dimensions": dimensions,
         "groups": groups,
         "start_year": start_year,
         "end_year": end_year,
