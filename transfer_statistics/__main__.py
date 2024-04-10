@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import isnan, nan, sqrt
+from numpy import arange, isin, isnan, logical_and, nan, sqrt
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.handle_metadata import create_metadata_file
@@ -34,6 +34,8 @@ INCOMING_YEAR_COLUMN = "syear"
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
 Z_ALPHA = 1.96
+
+MISSING_VALUES = arange(start=-1, stop=-9, step=-1)
 
 
 def _existing_path(path):
@@ -185,12 +187,11 @@ def _calculate_one_categorical_variable_in_parallel(
 ):
     variable = arguments[0]
     args = arguments[1]
+    data = args["data"][~isin(args["data"][variable["name"]], MISSING_VALUES)]
+    data = data[[*args["grouping_names"], variable["name"]]]
 
     aggregated_dataframe = (
-        args["data"][[*args["grouping_names"], variable["name"]]]
-        .groupby(YEAR_COLUMN)
-        .value_counts(normalize=True)
-        .reset_index()
+        data.groupby(INCOMING_YEAR_COLUMN).value_counts(normalize=True).reset_index()
     )
     population = args["data"][YEAR_COLUMN].value_counts().rename("n")
     aggregated_dataframe = aggregated_dataframe.merge(
@@ -256,8 +257,10 @@ def _apply_numerical_aggregations(
     values = grouped_data_frame[variable_name].to_numpy()
     weights = grouped_data_frame[weight_name].to_numpy()
     # TODO: What to do with Missings?
-    weights = weights[~isnan(values)]
-    values = values[~isnan(values)]
+    no_missing_selector = logical_and(~isin(values, MISSING_VALUES), ~isnan(values))
+
+    weights = weights[no_missing_selector]
+    values = values[no_missing_selector]
 
     if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
         return None
