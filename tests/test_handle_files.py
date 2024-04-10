@@ -14,13 +14,15 @@ from transfer_statistics.types import GroupingVariable, VariableMetadata
 EXPECTED_GROUPS = {
     "age_gr": GroupingVariable(
         variable="age_gr",
-        label="Altersgruppe",
+        label="",
+        label_de="Altersgruppe",
         values=[1, 2, 3, 4],
         value_labels=["17-29", "30-45", "46-65", "66"],
     ),
     "bildungsniveau": GroupingVariable(
         variable="bildungsniveau",
-        label="Bildungsniveau",
+        label="",
+        label_de="Bildungsniveau",
         values=[1, 2, 3, 4, 5],
         value_labels=[
             "(noch) kein Abschluss",

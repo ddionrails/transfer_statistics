@@ -25,7 +25,7 @@ def _simple_dataframe(request):
     return DataFrame(data)
 
 
-@pytest.fixture(name="simple_dataframe")
+@pytest.fixture(name="complex_dataframe")
 def _testdata_dataframe(request):
     data = {
         "syear": [
@@ -45,7 +45,7 @@ def _testdata_dataframe(request):
         "age_gr": choices([1, 2, 3], k=12),
         "agre": choices([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], k=12),
         "bildungsniveau": choices([1, 2, 3, 4, 5], k=12),
-        "bmi": [None, None, None * choices([1, 2, 3, 4, 5], k=9)],
+        "bmi": [None, None, None, *choices([0, 2, 3, 4, 5], k=9)],
     }
     if getattr(request, "cls", False):
         request.cls.simple_dataframe = DataFrame(data)
