@@ -270,17 +270,3 @@ def _apply_numerical_aggregations(
     output = output | bootstrap_median(values, weights)
     output = output | {"n": values.size}
     return Series(output, index=list(output.keys()))
-
-
-EMPTY_RESULT = {
-    "median": nan,
-    "median_lower_confidence": nan,
-    "median_upper_confidence": nan,
-    "lower_quartile": nan,
-    "boxplot_median": nan,
-    "upper_quartile": nan,
-    "lower_whisker": nan,
-    "upper_whisker": nan,
-    "mean" "mean_lower_confidence": nan,
-    "mean_upper_confidence": nan,
-}
