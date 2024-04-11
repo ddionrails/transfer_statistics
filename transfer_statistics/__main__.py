@@ -156,28 +156,6 @@ def calculate_statistics(
             pool.map(calculation_function, arguments)
 
 
-def calculate_one_variable(
-    data, names, _grouping_names, variable, weight_name, value_labels, output_folder
-):
-    aggregated_dataframe = (
-        data[[*_grouping_names, variable["name"], weight_name]]
-        .groupby(_grouping_names)
-        .apply(
-            _apply_numerical_aggregations,
-            variable_name=variable["name"],
-            weight_name=weight_name,
-        )
-    )  # type: ignore
-    aggregated_dataframe = apply_value_labels(aggregated_dataframe, value_labels, names)
-    group_file_name = "_".join(names)
-    file_name = output_folder.joinpath(variable["name"]).joinpath(
-        f"{variable['name']}_year_{group_file_name}.csv"
-    )
-    aggregated_dataframe = aggregated_dataframe.rename(columns={"syear": "year"})
-    aggregated_dataframe.to_csv(file_name, index=False)
-    del aggregated_dataframe
-
-
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[Variable, GeneralArguments]
 ):
