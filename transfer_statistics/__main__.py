@@ -60,7 +60,7 @@ def cli():
     metadata = read_variable_metadata(
         arguments.metadata_path.joinpath("variables.csv"), arguments.dataset_name
     )
-    value_labels = read_value_label_metadata(
+    value_labels, categorical_labels = read_value_label_metadata(
         arguments.metadata_path.joinpath("variable_categories.csv"), metadata
     )
     data = read_stata(
@@ -69,7 +69,11 @@ def cli():
     # data = data.rename(columns={"syear": "syear"})
 
     calculate_categorical_statistics(
-        data, metadata, value_labels, categorical_output_path
+        data,
+        metadata,
+        value_labels,
+        categorical_labels,
+        categorical_output_path,
     )
     calculate_numerical_statistics(
         data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
@@ -100,8 +104,10 @@ def calculate_categorical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
     value_labels,
+    categorical_labels,
     output_folder: Path,
 ) -> None:
+    value_labels = {"group": value_labels, "categorical": categorical_labels}
     calculate_statistics(data, metadata, value_labels, output_folder, "", "categorical")
 
 
@@ -177,7 +183,12 @@ def _calculate_one_categorical_variable_in_parallel(
         )
     )
 
-    args["names"].insert(0, variable["name"])
+    aggregated_dataframe = apply_value_labels(
+        aggregated_dataframe, args["value_labels"]["group"], args["names"]
+    )
+    aggregated_dataframe = apply_value_labels(
+        aggregated_dataframe, args["value_labels"]["categorical"], variable["name"]
+    )
     _save_dataframe(aggregated_dataframe, args, variable)
 
 
@@ -205,17 +216,13 @@ def _calculate_one_numerical_variable_in_parallel(
             weight_name=args["weight_name"],
         )
     )  # type: ignore
+    aggregated_dataframe = apply_value_labels(
+        aggregated_dataframe, args["value_labels"], args["names"]
+    )
     _save_dataframe(aggregated_dataframe, args, variable)
 
 
 def _save_dataframe(aggregated_dataframe, args, variable):
-    aggregated_dataframe = apply_value_labels(
-        aggregated_dataframe, args["value_labels"], args["names"]
-    )
-    # Fix for labeling of primary variables in categorical statistics
-    # TODO: Think of a better way of handling this
-    if variable["name"] in args["names"]:
-        args["names"].pop(args["names"].index(variable["name"]))
 
     group_file_name = "_".join(args["names"])
     if group_file_name:

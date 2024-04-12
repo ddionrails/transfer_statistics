@@ -9,17 +9,17 @@ from transfer_statistics.handle_files import (
     read_value_label_metadata,
     read_variable_metadata,
 )
-from transfer_statistics.types import GroupingVariable, VariableMetadata
+from transfer_statistics.types import LabeledVariable, VariableMetadata
 
 EXPECTED_GROUPS = {
-    "age_gr": GroupingVariable(
+    "age_gr": LabeledVariable(
         variable="age_gr",
         label="",
         label_de="Altersgruppe",
         values=[1, 2, 3, 4],
         value_labels=["17-29", "30-45", "46-65", "66"],
     ),
-    "bildungsniveau": GroupingVariable(
+    "bildungsniveau": LabeledVariable(
         variable="bildungsniveau",
         label="",
         label_de="Bildungsniveau",
@@ -253,7 +253,7 @@ class TestHandleFiles(TestCase):
 
     def test_read_value_label_metadata(self):
         metadata = read_variable_metadata(self.variables_csv, "p_statistics")
-        result = read_value_label_metadata(self.variable_labels_csv, metadata)
+        result, _ = read_value_label_metadata(self.variable_labels_csv, metadata)
         self.assertDictEqual(EXPECTED_GROUPS, result)
 
     def test_get_variable_combinations(self):

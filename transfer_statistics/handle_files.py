@@ -1,12 +1,13 @@
 from csv import DictReader
 from itertools import combinations
 from pathlib import Path
+from typing import Union, Literal
 
 from pandas import DataFrame
 
 
 from transfer_statistics.types import (
-    GroupingVariable,
+    LabeledVariable,
     ValueLabels,
     Variable,
     VariableMetadata,
@@ -47,22 +48,31 @@ def read_variable_metadata(metadata_file: Path, dataset_name: str) -> VariableMe
 
 def read_value_label_metadata(
     value_label_file: Path, variable_metadata: VariableMetadata
-) -> ValueLabels:
-    output: ValueLabels = {}
+) -> tuple[ValueLabels, ValueLabels]:
+    labeled_variables: dict[
+        Union[Literal["group"], Literal["categorical"]], ValueLabels
+    ] = {}
     grouping_variables: dict[tuple[str, str], Variable] = {}
+    categorical_variables: dict[tuple[str, str], Variable] = {}
     _id = ()
 
     for variable in variable_metadata["group"]:
         grouping_variables[variable["name"]] = variable
 
+    for variable in variable_metadata["categorical"]:
+        categorical_variables[variable["name"]] = variable
+
     with open(value_label_file, "r", encoding="utf-8") as file:
         reader = DictReader(file)
         for line in reader:
             _id = line["variable"]
-            if _id not in grouping_variables:
+            type: Union[Literal["group"], Literal["categorical"]] = "group"
+            if _id not in grouping_variables and _id not in categorical_variables:
                 continue
-            if _id not in output:
-                output[_id] = GroupingVariable(
+            if _id in categorical_variables:
+                type = "categorical"
+            if _id not in labeled_variables[type]:
+                labeled_variables[type][_id] = LabeledVariable(
                     variable=line["variable"],
                     label=grouping_variables[_id]["label"],
                     label_de=grouping_variables[_id]["label_de"],
@@ -70,9 +80,9 @@ def read_value_label_metadata(
                     value_labels=[line["label_de"]],
                 )
                 continue
-            output[_id]["values"].append(int(line["value"]))
-            output[_id]["value_labels"].append(line["label_de"])
-    return output
+            labeled_variables[type][_id]["values"].append(int(line["value"]))
+            labeled_variables[type][_id]["value_labels"].append(line["label_de"])
+    return labeled_variables["group"], labeled_variables["categorical"]
 
 
 def get_variable_combinations(metadata: VariableMetadata):

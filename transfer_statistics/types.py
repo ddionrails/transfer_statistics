@@ -17,7 +17,7 @@ class VariableMetadata(TypedDict):
     group: list[Variable]
 
 
-class GroupingVariable(TypedDict):
+class LabeledVariable(TypedDict):
     variable: str
     label: str
     label_de: str
@@ -27,7 +27,7 @@ class GroupingVariable(TypedDict):
 
 type VariableName = str
 type VariableID = VariableName
-type ValueLabels = dict[VariableID, GroupingVariable]
+type ValueLabels = dict[VariableID, LabeledVariable]
 
 
 class GeneralArguments(TypedDict):
@@ -45,7 +45,7 @@ class MetadataFile(TypedDict):
     label: str
     label_de: str
     variable: str
-    dimensions: list[GroupingVariable]
-    groups: list[GroupingVariable]
+    dimensions: list[LabeledVariable]
+    groups: list[LabeledVariable]
     start_year: int
     end_year: int

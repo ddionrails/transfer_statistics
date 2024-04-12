@@ -22,6 +22,9 @@ def create_metadata_file(arguments: tuple[Variable, GeneralArguments]):
     output_folder = arguments[1]["output_folder"].joinpath(variable["name"])
     output_file = output_folder.joinpath("meta.json")
     value_labels: ValueLabels = arguments[1]["value_labels"]
+    # TODO: Refactor; fix typing issues and untangle the value_label handling
+    if value_labels.keys() == 2:
+        value_labels = value_labels["group"]
     groups = list(value_labels.values())
     dimensions = []
     for group in groups:
