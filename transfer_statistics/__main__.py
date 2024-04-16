@@ -202,7 +202,7 @@ def _calculate_one_categorical_variable_in_parallel(
         aggregated_dataframe, args["value_labels"]["group"], args["names"]
     )
     aggregated_dataframe = apply_value_labels(
-        aggregated_dataframe, args["value_labels"]["categorical"], variable["name"]
+        aggregated_dataframe, args["value_labels"]["categorical"], [variable["name"]]
     )
     _save_dataframe(aggregated_dataframe, args, variable)
 

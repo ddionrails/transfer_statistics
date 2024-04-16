@@ -51,7 +51,7 @@ def read_value_label_metadata(
 ) -> tuple[ValueLabels, ValueLabels]:
     labeled_variables: dict[
         Union[Literal["group"], Literal["categorical"]], ValueLabels
-    ] = {}
+    ] = {"group": {}, "categorical": {}}
     grouping_variables: dict[tuple[str, str], Variable] = {}
     categorical_variables: dict[tuple[str, str], Variable] = {}
     _id = ()
@@ -66,22 +66,23 @@ def read_value_label_metadata(
         reader = DictReader(file)
         for line in reader:
             _id = line["variable"]
-            type: Union[Literal["group"], Literal["categorical"]] = "group"
+            _type: Union[Literal["group"], Literal["categorical"]] = "group"
+            variables = grouping_variables
             if _id not in grouping_variables and _id not in categorical_variables:
                 continue
             if _id in categorical_variables:
-                type = "categorical"
-            if _id not in labeled_variables[type]:
-                labeled_variables[type][_id] = LabeledVariable(
+                _type = "categorical"
+                variables = categorical_variables
+            if _id not in labeled_variables[_type]:
+                labeled_variables[_type][_id] = LabeledVariable(
                     variable=line["variable"],
-                    label=grouping_variables[_id]["label"],
-                    label_de=grouping_variables[_id]["label_de"],
+                    label=variables[_id]["label"],
+                    label_de=variables[_id]["label_de"],
                     values=[int(line["value"])],
                     value_labels=[line["label_de"]],
                 )
-                continue
-            labeled_variables[type][_id]["values"].append(int(line["value"]))
-            labeled_variables[type][_id]["value_labels"].append(line["label_de"])
+            labeled_variables[_type][_id]["values"].append(int(line["value"]))
+            labeled_variables[_type][_id]["value_labels"].append(line["label_de"])
     return labeled_variables["group"], labeled_variables["categorical"]
 
 
