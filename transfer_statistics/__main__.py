@@ -34,6 +34,21 @@ Z_ALPHA = 1.96
 
 MISSING_VALUES = arange(start=-1, stop=-9, step=-1)
 
+EMPTY_NUMERICAL_RESULT = {
+    "mean": None,
+    "mean_lower_confidence": None,
+    "mean_upper_confidence": None,
+    "lower_quartile": None,
+    "boxplot_median": None,
+    "upper_quartile": None,
+    "lower_whisker": None,
+    "upper_whisker": None,
+    "median": None,
+    "median_lower_confidence": None,
+    "median_upper_confidence": None,
+    "n": None,
+}
+
 
 def _existing_path(path):
     output = Path(path).absolute()
@@ -245,14 +260,14 @@ def _apply_numerical_aggregations(
     grouped_data_frame = grouped_data_frame.sort_values(by=variable_name)
     values = grouped_data_frame[variable_name].to_numpy()
     weights = grouped_data_frame[weight_name].to_numpy()
-    # TODO: What to do with Missings?
+
     no_missing_selector = logical_and(~isin(values, MISSING_VALUES), ~isnan(values))
 
     weights = weights[no_missing_selector]
     values = values[no_missing_selector]
 
     if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
-        return None
+        return Series(EMPTY_NUMERICAL_RESULT.copy())
 
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
