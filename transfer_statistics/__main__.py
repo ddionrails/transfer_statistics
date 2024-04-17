@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import arange, isin, isnan, logical_and, nan, sqrt
+from numpy import arange, array2string, isin, isnan, logical_and, sqrt, unique
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.handle_metadata import create_metadata_file
@@ -254,8 +254,15 @@ def _apply_numerical_aggregations(
     if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
         return None
 
-    output = weighted_mean_and_confidence_interval(values, weights)
-    output = output | weighted_boxplot_sections(values, weights)
-    output = output | bootstrap_median(values, weights)
-    output = output | {"n": values.size}
+    try:
+        output = weighted_mean_and_confidence_interval(values, weights)
+        output = output | weighted_boxplot_sections(values, weights)
+        output = output | bootstrap_median(values, weights)
+        output = output | {"n": values.size}
+    except ValueError as error:
+        values_to_print = array2string(unique(values), separator=", ")
+        raise ValueError(
+            f"Error with variable {variable_name} and values {values_to_print}"
+        ) from error
+
     return Series(output, index=list(output.keys()))
