@@ -17,11 +17,11 @@ def _get_start_and_end_year(data: DataFrame):
 
 
 def create_metadata_file(arguments: tuple[Variable, GeneralArguments]):
-    data = arguments[1]["data"]
-    variable = arguments[0]
-    output_folder = arguments[1]["output_folder"].joinpath(variable["name"])
+    data = arguments[0]["data"]
+    variable = arguments[1]
+    output_folder = arguments[0]["output_folder"].joinpath(variable["name"])
     output_file = output_folder.joinpath("meta.json")
-    value_labels: ValueLabels = arguments[1]["value_labels"]
+    value_labels: ValueLabels = arguments[0]["value_labels"]
     # TODO: Refactor; fix typing issues and untangle the value_label handling
     if "group" in value_labels:
         value_labels = value_labels["group"]

@@ -5,6 +5,7 @@ from numpy import (
     arange,
     argsort,
     array,
+    array2string,
     average,
     cumsum,
     divide,
@@ -16,6 +17,7 @@ from numpy import (
     quantile,
     searchsorted,
     subtract,
+    unique,
 )
 from numpy import sum as numpy_sum
 from numpy.random import choice
@@ -56,14 +58,14 @@ def weighted_median(values: NDArray[float64], weights: NDArray[float64]):
 
     median_index = searchsorted(cum_weights, cum_weights[-1] / 2.0)
 
+    if median_index >= values_sorted.size:
+        median_index = values_sorted.size - 1
     weighted_median_value = values_sorted[median_index]
 
     return weighted_median_value
 
 
-def weighted_median_slow(
-    values: NDArray[float64], weights: NDArray[float64]
-) -> float64:
+def weighted_median_slow(values: NDArray[float64], weights: NDArray[float64]) -> float64:
     """Calculate weighted median on already sorted values."""
 
     weights_total = numpy_sum(weights)
@@ -129,7 +131,15 @@ def weighted_mean_and_confidence_interval(
 ) -> dict[str, float64]:
     _mean = average(values, weights=weights)
     variance = average((values - _mean) ** 2, weights=weights)
-    standard_deviation = sqrt(variance)
+    try:
+        standard_deviation = sqrt(variance)
+    except ValueError as error:
+        raise ValueError(
+            (
+                f"Math error with VARIANCE: {variance}, MEAN: {_mean}, "
+                f"WEIGHTS: {array2string(unique(weights), separator=', ')}"
+            )
+        ) from error
     confidence_interval = 0.95 * (standard_deviation / sqrt(values.size))
     return {
         "mean": _mean,

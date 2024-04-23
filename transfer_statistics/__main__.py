@@ -1,6 +1,10 @@
 import multiprocessing
+import sys
+import traceback
+
 from argparse import ArgumentParser
 from os import mkdir
+from itertools import repeat
 from pathlib import Path
 from shutil import rmtree
 from sys import argv
@@ -58,6 +62,10 @@ def _existing_path(path):
 
 
 def cli():
+    """CLI entrypoint.
+
+    Sets argument parser and manages program flow.
+    """
     parser = ArgumentParser(
         prog="Transfer Statistics Pipeline",
         description="Calculate Transfer Statistics",
@@ -151,14 +159,21 @@ def calculate_statistics(
             "value_labels": value_labels,
             "output_folder": output_folder,
         }
-        arguments = [
-            (variable, general_arguments) for variable in metadata[statistical_type]
-        ]
         calculation_function = _calculate_one_numerical_variable_in_parallel
         if statistical_type == "categorical":
             calculation_function = _calculate_one_categorical_variable_in_parallel
-        pool.map(create_metadata_file, arguments)
-        pool.map(calculation_function, arguments)
+        arguments = zip(
+            repeat(create_metadata_file),
+            repeat(general_arguments),
+            metadata[statistical_type],
+        )
+        pool.map(multiprocessing_wrapper, arguments)
+        arguments = zip(
+            repeat(calculation_function),
+            repeat(general_arguments),
+            metadata[statistical_type],
+        )
+        pool.map(multiprocessing_wrapper, arguments)
 
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
@@ -171,17 +186,31 @@ def calculate_statistics(
                 "value_labels": value_labels,
                 "output_folder": output_folder,
             }
-            arguments = [
-                (variable, general_arguments) for variable in metadata[statistical_type]
-            ]
-            pool.map(calculation_function, arguments)
+            arguments = zip(
+                repeat(calculation_function),
+                repeat(general_arguments),
+                metadata[statistical_type],
+            )
+            pool.map(multiprocessing_wrapper, arguments)
+
+
+def multiprocessing_wrapper(arguments) -> None:
+    """Make whole stacktrace available in parent process."""
+    exec_function = arguments[0]
+    arguments = arguments[1:]
+    try:
+        exec_function(arguments)
+    except BaseException as error:
+        raise RuntimeError(
+            "".join(traceback.format_exception(*sys.exc_info()))
+        ) from error
 
 
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[Variable, GeneralArguments]
-):
-    variable = arguments[0]
-    args = arguments[1]
+) -> None:
+    args = arguments[0]
+    variable = arguments[1]
     data = args["data"][~isin(args["data"][variable["name"]], MISSING_VALUES)]
     data = data[[*args["grouping_names"], variable["name"]]]
 
@@ -219,8 +248,8 @@ def _calculate_population_confidence_interval(row, proportion_column, n_column):
 def _calculate_one_numerical_variable_in_parallel(
     arguments: tuple[Variable, GeneralArguments]
 ):
-    variable = arguments[0]
-    args = arguments[1]
+    args = arguments[0]
+    variable = arguments[1]
 
     aggregated_dataframe = (
         args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
@@ -261,7 +290,10 @@ def _apply_numerical_aggregations(
     values = grouped_data_frame[variable_name].to_numpy()
     weights = grouped_data_frame[weight_name].to_numpy()
 
-    no_missing_selector = logical_and(~isin(values, MISSING_VALUES), ~isnan(values))
+    no_missing_selector = logical_and(
+        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
+        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
+    )
 
     weights = weights[no_missing_selector]
     values = values[no_missing_selector]
