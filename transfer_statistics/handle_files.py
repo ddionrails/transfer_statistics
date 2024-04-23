@@ -78,8 +78,8 @@ def read_value_label_metadata(
                     variable=line["variable"],
                     label=variables[_id]["label"],
                     label_de=variables[_id]["label_de"],
-                    values=[int(line["value"])],
-                    value_labels=[line["label_de"]],
+                    values=[],
+                    value_labels=[],
                 )
             labeled_variables[_type][_id]["values"].append(int(line["value"]))
             labeled_variables[_type][_id]["value_labels"].append(line["label_de"])
