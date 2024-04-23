@@ -89,7 +89,8 @@ def cli():
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
-    # data = data.rename(columns={"syear": "syear"})
+
+    data = data.replace(MISSING_VALUES, None)
 
     calculate_categorical_statistics(
         data,
