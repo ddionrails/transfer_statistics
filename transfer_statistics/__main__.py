@@ -93,7 +93,7 @@ def cli():
 
     data = data.replace(MISSING_VALUES, None)
 
-    calculate_categorical_statistics(
+    handle_categorical_statistics(
         data,
         metadata,
         value_labels,
@@ -101,7 +101,7 @@ def cli():
         categorical_output_path,
         arguments.weight_field_name,
     )
-    calculate_numerical_statistics(
+    handle_numerical_statistics(
         data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
     )
 
@@ -114,7 +114,7 @@ def _create_variable_folders(variables, output_folder):
         mkdir(variable_file_target)
 
 
-def calculate_numerical_statistics(
+def handle_numerical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
     value_labels,
@@ -167,11 +167,6 @@ def calculate_numerical_statistics(
                 "value_labels": value_labels,
                 "output_folder": output_folder,
             }
-            arguments = zip(
-                repeat(_calculate_one_numerical_variable_in_parallel),
-                repeat(general_arguments),
-                metadata[_type],
-            )
 
             for variable in metadata[_type]:
                 _calculate_one_numerical_variable_bootstrap_parallel(
@@ -179,7 +174,7 @@ def calculate_numerical_statistics(
                 )
 
 
-def calculate_categorical_statistics(
+def handle_categorical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
     value_labels,
@@ -322,24 +317,31 @@ def _calculate_one_numerical_variable_in_parallel(
 
 
 def _calculate_one_numerical_variable_bootstrap_parallel(
-    args: GeneralArguments, variable: Variable, pool
+    general_arguments: GeneralArguments, variable: Variable, pool
 ):
 
     aggregated_dataframe = (
-        args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
-        .groupby(args["grouping_names"])
+        general_arguments["data"][
+            [
+                *general_arguments["grouping_names"],
+                variable["name"],
+                general_arguments["weight_name"],
+            ]
+        ]
+        .groupby(general_arguments["grouping_names"])
         .apply(
             _apply_numerical_aggregations,
             variable_name=variable["name"],
-            weight_name=args["weight_name"],
+            weight_name=general_arguments["weight_name"],
+            pool=pool,
         )
     )  # type: ignore
 
-    columns_to_label = _filter_year_from_group_names(args["group_names"])
+    columns_to_label = _filter_year_from_group_names(general_arguments["group_names"])
     aggregated_dataframe = apply_value_labels(
-        aggregated_dataframe, args["value_labels"], columns_to_label
+        aggregated_dataframe, general_arguments["value_labels"], columns_to_label
     )
-    _save_dataframe(aggregated_dataframe, args, variable)
+    _save_dataframe(aggregated_dataframe, general_arguments, variable)
 
 
 def _save_dataframe(aggregated_dataframe, args, variable):
