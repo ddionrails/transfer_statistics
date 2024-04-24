@@ -32,7 +32,6 @@ type ValueLabels = dict[VariableID, LabeledVariable]
 
 class GeneralArguments(TypedDict):
     data: DataFrame
-    names: list[str]
     grouping_names: list[str]
     weight_name: str
     value_labels: ValueLabels

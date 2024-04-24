@@ -154,7 +154,6 @@ def calculate_statistics(
         _grouping_names = ["syear"]
         general_arguments: GeneralArguments = {
             "data": data,
-            "names": names,
             "grouping_names": _grouping_names,
             "weight_name": weight_name,
             "value_labels": value_labels,
@@ -181,7 +180,6 @@ def calculate_statistics(
             _grouping_names = ["syear", *names]
             general_arguments = {
                 "data": data,
-                "names": names,
                 "grouping_names": _grouping_names,
                 "weight_name": weight_name,
                 "value_labels": value_labels,
@@ -207,8 +205,12 @@ def multiprocessing_wrapper(arguments) -> None:
         ) from error
 
 
+def _filter_year_from_group_names(group_names) -> list[str]:
+    return group_names[1:]
+
+
 def _calculate_one_categorical_variable_in_parallel(
-    arguments: tuple[Variable, GeneralArguments]
+    arguments: tuple[GeneralArguments, Variable]
 ) -> None:
     args = arguments[0]
     variable = arguments[1]
@@ -228,8 +230,11 @@ def _calculate_one_categorical_variable_in_parallel(
         )
     )
 
+    # syear is at index 0 and does not need labeling
+    columns_to_label = _filter_year_from_group_names(args["grouping_names"])
+
     aggregated_dataframe = apply_value_labels(
-        aggregated_dataframe, args["value_labels"]["group"], args["names"]
+        aggregated_dataframe, args["value_labels"]["group"], columns_to_label
     )
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, args["value_labels"]["categorical"], [variable["name"]]
@@ -261,15 +266,19 @@ def _calculate_one_numerical_variable_in_parallel(
             weight_name=args["weight_name"],
         )
     )  # type: ignore
+
+    columns_to_label = _filter_year_from_group_names(args["group_names"])
     aggregated_dataframe = apply_value_labels(
-        aggregated_dataframe, args["value_labels"], args["names"]
+        aggregated_dataframe, args["value_labels"], columns_to_label
     )
     _save_dataframe(aggregated_dataframe, args, variable)
 
 
 def _save_dataframe(aggregated_dataframe, args, variable):
 
-    group_file_name = "_".join(args["names"])
+    labeled_columns = _filter_year_from_group_names(args["group_names"])
+
+    group_file_name = "_".join(labeled_columns)
     if group_file_name:
         group_file_name = "_" + group_file_name
 
