@@ -34,6 +34,7 @@ from transfer_statistics.types import (
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
+MEDIAN_BOOTSTRAP_PROCESSES = 8
 Z_ALPHA = 1.96
 
 MISSING_VALUES = arange(start=-1, stop=-9, step=-1)
@@ -98,6 +99,7 @@ def cli():
         value_labels,
         categorical_labels,
         categorical_output_path,
+        arguments.weight_field_name,
     )
     calculate_numerical_statistics(
         data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
@@ -119,35 +121,13 @@ def calculate_numerical_statistics(
     output_folder: Path,
     weight_name: str,
 ) -> None:
-    calculate_statistics(
-        data, metadata, value_labels, output_folder, weight_name, "numerical"
-    )
+    _type = "numerical"
 
-
-def calculate_categorical_statistics(
-    data: DataFrame,
-    metadata: VariableMetadata,
-    value_labels,
-    categorical_labels,
-    output_folder: Path,
-) -> None:
-    value_labels = {"group": value_labels, "categorical": categorical_labels}
-    calculate_statistics(data, metadata, value_labels, output_folder, "", "categorical")
-
-
-def calculate_statistics(
-    data: DataFrame,
-    metadata: VariableMetadata,
-    value_labels,
-    output_folder: Path,
-    weight_name: str,
-    statistical_type: str,
-) -> None:
     if not output_folder.exists():
         mkdir(output_folder)
     variable_combinations = get_variable_combinations(metadata=metadata)
 
-    _create_variable_folders(metadata[statistical_type], output_folder)
+    _create_variable_folders(metadata[_type], output_folder)
 
     with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
@@ -159,19 +139,84 @@ def calculate_statistics(
             "value_labels": value_labels,
             "output_folder": output_folder,
         }
-        calculation_function = _calculate_one_numerical_variable_in_parallel
-        if statistical_type == "categorical":
-            calculation_function = _calculate_one_categorical_variable_in_parallel
+
         arguments = zip(
             repeat(create_metadata_file),
             repeat(general_arguments),
-            metadata[statistical_type],
+            metadata[_type],
         )
         pool.map(multiprocessing_wrapper, arguments)
         arguments = zip(
-            repeat(calculation_function),
+            repeat(_calculate_one_numerical_variable_in_parallel),
             repeat(general_arguments),
-            metadata[statistical_type],
+            metadata[_type],
+        )
+        pool.map(multiprocessing_wrapper, arguments)
+
+    with multiprocessing.Pool(
+        processes=MEDIAN_BOOTSTRAP_PROCESSES
+    ) as median_bootstrap_pool:
+
+        for group in variable_combinations:
+            names = [variable["name"] for variable in group]
+            _grouping_names = ["syear", *names]
+            general_arguments = {
+                "data": data,
+                "grouping_names": _grouping_names,
+                "weight_name": weight_name,
+                "value_labels": value_labels,
+                "output_folder": output_folder,
+            }
+            arguments = zip(
+                repeat(_calculate_one_numerical_variable_in_parallel),
+                repeat(general_arguments),
+                metadata[_type],
+            )
+
+            for variable in metadata[_type]:
+                _calculate_one_numerical_variable_bootstrap_parallel(
+                    general_arguments, variable, pool=median_bootstrap_pool
+                )
+
+
+def calculate_categorical_statistics(
+    data: DataFrame,
+    metadata: VariableMetadata,
+    value_labels,
+    categorical_labels,
+    output_folder: Path,
+    weight_name: str,
+) -> None:
+    _type = "categorical"
+    value_labels = {"group": value_labels, "categorical": categorical_labels}
+
+    if not output_folder.exists():
+        mkdir(output_folder)
+    variable_combinations = get_variable_combinations(metadata=metadata)
+
+    _create_variable_folders(metadata[_type], output_folder)
+
+    with multiprocessing.Pool(processes=PROCESSES) as pool:
+        names = []
+        _grouping_names = ["syear"]
+        general_arguments: GeneralArguments = {
+            "data": data,
+            "grouping_names": _grouping_names,
+            "weight_name": weight_name,
+            "value_labels": value_labels,
+            "output_folder": output_folder,
+        }
+
+        arguments = zip(
+            repeat(create_metadata_file),
+            repeat(general_arguments),
+            metadata[_type],
+        )
+        pool.map(multiprocessing_wrapper, arguments)
+        arguments = zip(
+            repeat(_calculate_one_categorical_variable_in_parallel),
+            repeat(general_arguments),
+            metadata[_type],
         )
         pool.map(multiprocessing_wrapper, arguments)
 
@@ -186,9 +231,9 @@ def calculate_statistics(
                 "output_folder": output_folder,
             }
             arguments = zip(
-                repeat(calculation_function),
+                repeat(_calculate_one_categorical_variable_in_parallel),
                 repeat(general_arguments),
-                metadata[statistical_type],
+                metadata[_type],
             )
             pool.map(multiprocessing_wrapper, arguments)
 
@@ -214,11 +259,13 @@ def _calculate_one_categorical_variable_in_parallel(
 ) -> None:
     args = arguments[0]
     variable = arguments[1]
-    data = args["data"][~isin(args["data"][variable["name"]], MISSING_VALUES)]
-    data = data[[*args["grouping_names"], variable["name"]]]
+    data = args["data"]
+    data_no_missing = data[~isin(data[variable["name"]], MISSING_VALUES)]
+    data_slice = data_no_missing[[*args["grouping_names"], variable["name"]]]
+    del data, data_no_missing
 
     aggregated_dataframe = (
-        data.groupby("syear").value_counts(normalize=True).reset_index()
+        data_slice.groupby("syear").value_counts(normalize=True).reset_index()
     )
     population = args["data"]["syear"].value_counts().rename("n")
     aggregated_dataframe = aggregated_dataframe.merge(
@@ -274,6 +321,27 @@ def _calculate_one_numerical_variable_in_parallel(
     _save_dataframe(aggregated_dataframe, args, variable)
 
 
+def _calculate_one_numerical_variable_bootstrap_parallel(
+    args: GeneralArguments, variable: Variable, pool
+):
+
+    aggregated_dataframe = (
+        args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
+        .groupby(args["grouping_names"])
+        .apply(
+            _apply_numerical_aggregations,
+            variable_name=variable["name"],
+            weight_name=args["weight_name"],
+        )
+    )  # type: ignore
+
+    columns_to_label = _filter_year_from_group_names(args["group_names"])
+    aggregated_dataframe = apply_value_labels(
+        aggregated_dataframe, args["value_labels"], columns_to_label
+    )
+    _save_dataframe(aggregated_dataframe, args, variable)
+
+
 def _save_dataframe(aggregated_dataframe, args, variable):
 
     labeled_columns = _filter_year_from_group_names(args["group_names"])
@@ -294,7 +362,10 @@ def _save_dataframe(aggregated_dataframe, args, variable):
 
 
 def _apply_numerical_aggregations(
-    grouped_data_frame: DataFrame, variable_name: str, weight_name: str
+    grouped_data_frame: DataFrame,
+    variable_name: str,
+    weight_name: str,
+    pool: multiprocessing.Pool = None,
 ) -> Series:
     grouped_data_frame = grouped_data_frame.sort_values(by=variable_name)
     values = grouped_data_frame[variable_name].to_numpy()
@@ -314,7 +385,7 @@ def _apply_numerical_aggregations(
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
-        output = output | bootstrap_median(values, weights)
+        output = output | bootstrap_median(values, weights, pool)
         output = output | {"n": values.size}
     except ValueError as error:
         values_to_print = array2string(unique(values), separator=", ")

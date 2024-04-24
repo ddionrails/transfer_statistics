@@ -15,7 +15,7 @@ from transfer_statistics.types import (
 
 
 def apply_value_labels(
-    dataframe: DataFrame, value_labels: ValueLabels, grouping_variables: tuple[str, ...]
+    dataframe: DataFrame, value_labels: ValueLabels, grouping_variables: list[str]
 ) -> DataFrame:
     dataframe = dataframe.reset_index(drop=False)
     if "index" in dataframe.columns:

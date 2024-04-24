@@ -6,6 +6,7 @@ from numpy import (
     argsort,
     array,
     array2string,
+    asarray,
     average,
     cumsum,
     divide,
@@ -25,7 +26,7 @@ from numpy.typing import NDArray
 
 
 def bootstrap_median(
-    values: NDArray[float64], weights: NDArray[float64], runs: int = 200
+    values: NDArray[float64], weights: NDArray[float64], runs: int = 200, pool=None
 ) -> dict[str, float64]:
     indices_full = arange(0, values.size)
 
@@ -33,11 +34,16 @@ def bootstrap_median(
 
     median_distribution = empty(runs)
 
-    for index, _ in enumerate(median_distribution):
-        sample_indices = choice(indices_full, size=values.size)
-        sample: NDArray[float64] = values[sample_indices]
-        sample_weights = weights[sample_indices]
-        median_distribution[index] = weighted_median(sample, sample_weights)
+    if pool:
+        median_distribution = asarray(
+            pool.map(_parallel_bootstrap_median, [values, weights]), float64
+        )
+    else:
+        for index, _ in enumerate(median_distribution):
+            sample_indices = choice(indices_full, size=values.size)
+            sample: NDArray[float64] = values[sample_indices]
+            sample_weights = weights[sample_indices]
+            median_distribution[index] = weighted_median(sample, sample_weights)
 
     quantiles = quantile(median_distribution, q=[0.025, 0.975])
     lower_confidence = subtract(multiply(2, median), quantiles[1])
@@ -49,7 +55,18 @@ def bootstrap_median(
     }
 
 
-def weighted_median(values: NDArray[float64], weights: NDArray[float64]):
+def _parallel_bootstrap_median(arguments) -> float64:
+    values = arguments[0]
+    weights = arguments[1]
+    sample_indices = choice(values.size, size=values.size)
+    sample: NDArray[float64] = values[sample_indices]
+    sample_weights = weights[sample_indices]
+    median = weighted_median(sample, sample_weights)
+    del arguments, values, weights, sample_indices, sample, sample_weights
+    return median
+
+
+def weighted_median(values: NDArray[float64], weights: NDArray[float64]) -> float64:
     sorted_indices = argsort(values)
     values_sorted = values[sorted_indices]
     weights_sorted = weights[sorted_indices]
