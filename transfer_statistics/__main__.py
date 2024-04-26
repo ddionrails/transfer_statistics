@@ -1,6 +1,7 @@
 import multiprocessing
 
 from argparse import ArgumentParser
+from csv import DictWriter
 from os import mkdir
 from itertools import repeat
 from pathlib import Path
@@ -8,10 +9,10 @@ from shutil import rmtree
 from sys import argv
 
 from numpy import arange, array2string, isin, isnan, logical_and, NaN, sqrt, unique
-from pandas import DataFrame, Series, read_stata
+from pandas import concat, DataFrame, Series, read_stata
 
 from transfer_statistics.handle_metadata import create_metadata_file
-from transfer_statistics.helpers import multiprocessing_wrapper
+from transfer_statistics.helpers import multiprocessing_wrapper, row_order
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
@@ -20,6 +21,7 @@ from transfer_statistics.calculate_metrics import (
 )
 from transfer_statistics.handle_files import (
     apply_value_labels,
+    apply_value_labels_to_list_of_dict,
     get_variable_combinations,
     read_value_label_metadata,
     read_variable_metadata,
@@ -92,14 +94,14 @@ def cli():
 
     data = data.replace(MISSING_VALUES, NaN)
 
-    # handle_categorical_statistics(
-    #    data,
-    #    metadata,
-    #    value_labels,
-    #    categorical_labels,
-    #    categorical_output_path,
-    #    arguments.weight_field_name,
-    # )
+    handle_categorical_statistics(
+        data,
+        metadata,
+        value_labels,
+        categorical_labels,
+        categorical_output_path,
+        arguments.weight_field_name,
+    )
     handle_numerical_statistics(
         data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
     )
@@ -168,7 +170,7 @@ def handle_numerical_statistics(
             }
 
             for variable in metadata[_type]:
-                _calculate_one_numerical_variable_bootstrap_parallel(
+                _parallelize_by_group_numerical(
                     general_arguments, variable, pool=median_bootstrap_pool
                 )
 
@@ -303,6 +305,36 @@ def _calculate_one_numerical_variable_in_parallel(
     _save_dataframe(aggregated_dataframe, args, variable)
 
 
+def _parallelize_by_group_numerical(
+    general_arguments: GeneralArguments, variable: Variable, pool
+):
+
+    dataframe_groups = general_arguments["data"][
+        [
+            *general_arguments["grouping_names"],
+            variable["name"],
+            general_arguments["weight_name"],
+        ]
+    ].groupby(general_arguments["grouping_names"])
+    arguments = []
+    for grouped_by, group in dataframe_groups:
+        name_mapping = dict(zip(general_arguments["grouping_names"], grouped_by))
+        arguments.append(
+            (
+                name_mapping,
+                group[variable["name"]].to_numpy(),
+                group[general_arguments["weight_name"]].to_numpy(),
+            )
+        )
+    rows = pool.map(_caclulate_numerical_aggregations_in_parallel, arguments)
+
+    columns_to_label = _filter_year_from_group_names(general_arguments["grouping_names"])
+    rows = apply_value_labels_to_list_of_dict(
+        rows, general_arguments["value_labels"], columns_to_label
+    )
+    _save_list_of_dicts(rows, general_arguments, variable)
+
+
 def _calculate_one_numerical_variable_bootstrap_parallel(
     general_arguments: GeneralArguments, variable: Variable, pool
 ):
@@ -350,6 +382,26 @@ def _save_dataframe(aggregated_dataframe, args, variable):
     aggregated_dataframe.to_csv(file_name, index=False)
 
 
+def _save_list_of_dicts(rows, args, variable):
+
+    labeled_columns = _filter_year_from_group_names(args["grouping_names"])
+
+    group_file_name = "_".join(labeled_columns)
+    if group_file_name:
+        group_file_name = "_" + group_file_name
+
+    file_name = (
+        args["output_folder"]
+        .joinpath(variable["name"])
+        .joinpath(f"{variable['name']}_year{group_file_name}.csv")
+    )
+
+    with open(file_name, "w", encoding="utf-8") as file:
+        writer = DictWriter(file, fieldnames=row_order(labeled_columns))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def _apply_numerical_aggregations(
     grouped_data_frame: DataFrame,
     variable_name: str,
@@ -382,3 +434,37 @@ def _apply_numerical_aggregations(
         ) from error
 
     return Series(output, index=list(output.keys()))
+
+
+def _caclulate_numerical_aggregations_in_parallel(
+    arguments,
+) -> Series:
+    name_mapping = arguments[0]
+
+    values = arguments[1]
+    weights = arguments[2]
+
+    no_missing_selector = logical_and(
+        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
+        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
+    )
+
+    weights = weights[no_missing_selector]
+    values = values[no_missing_selector]
+
+    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
+        return name_mapping | EMPTY_NUMERICAL_RESULT.copy()
+
+    try:
+        output = name_mapping
+        output = output | weighted_mean_and_confidence_interval(values, weights)
+        output = output | weighted_boxplot_sections(values, weights)
+        output = output | bootstrap_median(values, weights)
+        output = output | {"n": values.size}
+    except ValueError as error:
+        values_to_print = array2string(unique(values), separator=", ")
+        raise ValueError(
+            f"Error with group {name_mapping} and values {values_to_print}"
+        ) from error
+
+    return output

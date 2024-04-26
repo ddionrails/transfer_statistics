@@ -27,6 +27,23 @@ def apply_value_labels(
     return dataframe
 
 
+def apply_value_labels_to_list_of_dict(
+    rows: DataFrame, value_labels: ValueLabels, grouping_variables: list[str]
+) -> DataFrame:
+    mapping = {}
+    for variable in grouping_variables:
+        mapping[variable] = dict(
+            zip(value_labels[variable]["values"], value_labels[variable]["value_labels"])
+        )
+    for row in rows:
+        row["year"] = row["syear"]
+        del row["syear"]
+        for variable in grouping_variables:
+            row[variable] = mapping[variable][int(row[variable])]
+
+    return rows
+
+
 def read_variable_metadata(metadata_file: Path, dataset_name: str) -> VariableMetadata:
     metadata: VariableMetadata = VariableMetadata(categorical=[], numerical=[], group=[])
     with open(metadata_file, "r", encoding="utf-8") as file:

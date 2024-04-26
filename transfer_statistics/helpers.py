@@ -13,3 +13,22 @@ def multiprocessing_wrapper(arguments) -> None:
             f"Arguments: {arguments}"
             + "".join(traceback.format_exception(*sys.exc_info()))
         ) from error
+
+
+def row_order(groups):
+    return [
+        "year",
+        *groups,
+        "n",
+        "mean",
+        "mean_lower_confidence",
+        "mean_upper_confidence",
+        "lower_quartile",
+        "boxplot_median",
+        "upper_quartile",
+        "lower_whisker",
+        "upper_whisker",
+        "median",
+        "median_lower_confidence",
+        "median_upper_confidence",
+    ]

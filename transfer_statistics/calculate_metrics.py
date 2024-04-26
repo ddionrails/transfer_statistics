@@ -29,7 +29,7 @@ from transfer_statistics.helpers import multiprocessing_wrapper
 
 
 def bootstrap_median(
-    values: NDArray[float64], weights: NDArray[float64], runs: int = 20, pool=None
+    values: NDArray[float64], weights: NDArray[float64], runs: int = 200, pool=None
 ) -> dict[str, float64]:
     indices_full = arange(0, values.size)
 
@@ -41,7 +41,7 @@ def bootstrap_median(
         median_distribution = asarray(
             pool.map(
                 multiprocessing_wrapper,
-                repeat([_parallel_bootstrap_median, values, weights], runs / 20),
+                repeat([_parallel_bootstrap_median, values, weights], runs),
             ),
             float64,
         )
@@ -63,11 +63,8 @@ def bootstrap_median(
 
 
 def _parallel_bootstrap_median(arguments) -> float64:
-    try:
-        values = arguments[0]
-        weights = arguments[1]
-    except IndexError as error:
-        raise IndexError(f"With arguments: {arguments}") from error
+    values = arguments[0]
+    weights = arguments[1]
     sample_indices = choice(values.size, size=values.size)
     sample: NDArray[float64] = values[sample_indices]
     sample_weights = weights[sample_indices]
