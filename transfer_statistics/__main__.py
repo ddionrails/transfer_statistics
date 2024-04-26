@@ -1,6 +1,4 @@
 import multiprocessing
-import sys
-import traceback
 
 from argparse import ArgumentParser
 from os import mkdir
@@ -9,10 +7,11 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import arange, array2string, isin, isnan, logical_and, sqrt, unique
+from numpy import arange, array2string, isin, isnan, logical_and, NaN, sqrt, unique
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.handle_metadata import create_metadata_file
+from transfer_statistics.helpers import multiprocessing_wrapper
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
@@ -34,7 +33,7 @@ from transfer_statistics.types import (
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
-MEDIAN_BOOTSTRAP_PROCESSES = 8
+MEDIAN_BOOTSTRAP_PROCESSES = 20
 Z_ALPHA = 1.96
 
 MISSING_VALUES = arange(start=-1, stop=-9, step=-1)
@@ -91,16 +90,16 @@ def cli():
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
 
-    data = data.replace(MISSING_VALUES, None)
+    data = data.replace(MISSING_VALUES, NaN)
 
-    handle_categorical_statistics(
-        data,
-        metadata,
-        value_labels,
-        categorical_labels,
-        categorical_output_path,
-        arguments.weight_field_name,
-    )
+    # handle_categorical_statistics(
+    #    data,
+    #    metadata,
+    #    value_labels,
+    #    categorical_labels,
+    #    categorical_output_path,
+    #    arguments.weight_field_name,
+    # )
     handle_numerical_statistics(
         data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
     )
@@ -233,18 +232,6 @@ def handle_categorical_statistics(
             pool.map(multiprocessing_wrapper, arguments)
 
 
-def multiprocessing_wrapper(arguments) -> None:
-    """Make whole stacktrace available in parent process."""
-    exec_function = arguments[0]
-    arguments = arguments[1:]
-    try:
-        exec_function(arguments)
-    except BaseException as error:
-        raise RuntimeError(
-            "".join(traceback.format_exception(*sys.exc_info()))
-        ) from error
-
-
 def _filter_year_from_group_names(group_names) -> list[str]:
     return group_names[1:]
 
@@ -309,7 +296,7 @@ def _calculate_one_numerical_variable_in_parallel(
         )
     )  # type: ignore
 
-    columns_to_label = _filter_year_from_group_names(args["group_names"])
+    columns_to_label = _filter_year_from_group_names(args["grouping_names"])
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, args["value_labels"], columns_to_label
     )
@@ -337,7 +324,7 @@ def _calculate_one_numerical_variable_bootstrap_parallel(
         )
     )  # type: ignore
 
-    columns_to_label = _filter_year_from_group_names(general_arguments["group_names"])
+    columns_to_label = _filter_year_from_group_names(general_arguments["grouping_names"])
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, general_arguments["value_labels"], columns_to_label
     )
@@ -346,7 +333,7 @@ def _calculate_one_numerical_variable_bootstrap_parallel(
 
 def _save_dataframe(aggregated_dataframe, args, variable):
 
-    labeled_columns = _filter_year_from_group_names(args["group_names"])
+    labeled_columns = _filter_year_from_group_names(args["grouping_names"])
 
     group_file_name = "_".join(labeled_columns)
     if group_file_name:
@@ -369,7 +356,6 @@ def _apply_numerical_aggregations(
     weight_name: str,
     pool: multiprocessing.Pool = None,
 ) -> Series:
-    grouped_data_frame = grouped_data_frame.sort_values(by=variable_name)
     values = grouped_data_frame[variable_name].to_numpy()
     weights = grouped_data_frame[weight_name].to_numpy()
 
@@ -387,7 +373,7 @@ def _apply_numerical_aggregations(
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
-        output = output | bootstrap_median(values, weights, pool)
+        output = output | bootstrap_median(values, weights, pool=pool)
         output = output | {"n": values.size}
     except ValueError as error:
         values_to_print = array2string(unique(values), separator=", ")
