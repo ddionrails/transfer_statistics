@@ -2,13 +2,8 @@ from json import dump
 
 from pandas import DataFrame, to_numeric
 
-
-from transfer_statistics.types import (
-    GeneralArguments,
-    Variable,
-    ValueLabels,
-    MetadataFile,
-)
+from transfer_statistics.types import (GeneralArguments, MetadataFile,
+                                       ValueLabels, Variable)
 
 
 def _get_start_and_end_year(data: DataFrame):

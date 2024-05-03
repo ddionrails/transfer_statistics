@@ -1,18 +1,24 @@
 import multiprocessing
-
 from argparse import ArgumentParser
 from csv import DictWriter
-from os import mkdir
 from itertools import repeat
+from os import mkdir
 from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import arange, array2string, isin, isnan, logical_and, NaN, sqrt, unique
-from pandas import concat, DataFrame, Series, read_stata
-
-from transfer_statistics.handle_metadata import create_metadata_file
-from transfer_statistics.helpers import multiprocessing_wrapper, row_order
+from numpy import (
+    NaN,
+    arange,
+    argsort,
+    array2string,
+    isin,
+    isnan,
+    logical_and,
+    sqrt,
+    unique,
+)
+from pandas import DataFrame, Series, concat, read_stata
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
@@ -26,12 +32,9 @@ from transfer_statistics.handle_files import (
     read_value_label_metadata,
     read_variable_metadata,
 )
-from transfer_statistics.types import (
-    GeneralArguments,
-    Variable,
-    VariableMetadata,
-)
-
+from transfer_statistics.handle_metadata import create_metadata_file
+from transfer_statistics.helpers import multiprocessing_wrapper, row_order
+from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
@@ -335,34 +338,6 @@ def _parallelize_by_group_numerical(
     _save_list_of_dicts(rows, general_arguments, variable)
 
 
-def _calculate_one_numerical_variable_bootstrap_parallel(
-    general_arguments: GeneralArguments, variable: Variable, pool
-):
-
-    aggregated_dataframe = (
-        general_arguments["data"][
-            [
-                *general_arguments["grouping_names"],
-                variable["name"],
-                general_arguments["weight_name"],
-            ]
-        ]
-        .groupby(general_arguments["grouping_names"])
-        .apply(
-            _apply_numerical_aggregations,
-            variable_name=variable["name"],
-            weight_name=general_arguments["weight_name"],
-            pool=pool,
-        )
-    )  # type: ignore
-
-    columns_to_label = _filter_year_from_group_names(general_arguments["grouping_names"])
-    aggregated_dataframe = apply_value_labels(
-        aggregated_dataframe, general_arguments["value_labels"], columns_to_label
-    )
-    _save_dataframe(aggregated_dataframe, general_arguments, variable)
-
-
 def _save_dataframe(aggregated_dataframe, args, variable):
 
     labeled_columns = _filter_year_from_group_names(args["grouping_names"])
@@ -411,6 +386,11 @@ def _apply_numerical_aggregations(
     values = grouped_data_frame[variable_name].to_numpy()
     weights = grouped_data_frame[weight_name].to_numpy()
 
+    # Boxplot need the values sorted
+    sorter = argsort(values)
+    values = values[sorter]
+    weights = weights[sorter]
+
     no_missing_selector = logical_and(
         logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
         logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
@@ -443,6 +423,11 @@ def _caclulate_numerical_aggregations_in_parallel(
 
     values = arguments[1]
     weights = arguments[2]
+
+    # Boxplot need the values sorted
+    sorter = argsort(values)
+    values = values[sorter]
+    weights = weights[sorter]
 
     no_missing_selector = logical_and(
         logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),

@@ -1,27 +1,11 @@
 from itertools import repeat
 from math import sqrt
 
-from numpy import (
-    add,
-    arange,
-    argsort,
-    array,
-    array2string,
-    asarray,
-    average,
-    cumsum,
-    divide,
-    empty,
-    float64,
-    interp,
-    mean,
-    multiply,
-    quantile,
-    searchsorted,
-    subtract,
-    unique,
-)
+from numpy import (add, arange, argsort, array, array2string, asarray, average,
+                   cumsum, divide, empty, float64, interp, mean, multiply,
+                   quantile, searchsorted, subtract)
 from numpy import sum as numpy_sum
+from numpy import unique
 from numpy.random import choice
 from numpy.typing import NDArray
 
