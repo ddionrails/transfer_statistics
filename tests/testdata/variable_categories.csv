@@ -4,14 +4,13 @@ soep-core,p_statistics,v37,age_gr,2,30-45,30-45
 soep-core,p_statistics,v37,age_gr,3,46-65,46-65
 soep-core,p_statistics,v37,age_gr,4,66,66
 soep-core,p_statistics,v37,agre,1,,1 Trifft überhaupt nicht zu
-soep-core,p_statistics,v37,agre,2,,2
-soep-core,p_statistics,v37,agre,3,,3
-soep-core,p_statistics,v37,agre,4,,4
-soep-core,p_statistics,v37,agre,5,,5
-soep-core,p_statistics,v37,agre,6,,6
-soep-core,p_statistics,v37,agre,7,,7 Trifft voll zu
-soep-core,p_statistics,v37,bildungsniveau,1,,(noch) kein Abschluss
-soep-core,p_statistics,v37,bildungsniveau,2,,Hauptschule
-soep-core,p_statistics,v37,bildungsniveau,3,,Realschule
-soep-core,p_statistics,v37,bildungsniveau,4,,(Fach-)Abitur
-soep-core,p_statistics,v37,bildungsniveau,5,,AkademikerIn
+soep-core,p_statistics,v37,agre,2,2,2
+soep-core,p_statistics,v37,agre,3,3,3
+soep-core,p_statistics,v37,agre,4,4,4
+soep-core,p_statistics,v37,agre,5,5,5
+soep-core,p_statistics,v37,agre,6,6,6
+soep-core,p_statistics,v37,agre,7,7 Does not apply,7 Trifft voll zu
+soep-core,p_statistics,v37,bildungsniveau,1,No School Degree Yet,(noch) kein Abschluss
+soep-core,p_statistics,v37,bildungsniveau,2,Secondary School Degree,Hauptschule
+soep-core,p_statistics,v37,bildungsniveau,3,Intermediate School Degree,Realschule
+soep-core,p_statistics,v37,bildungsniveau,4,Technical School Degree,(Fach-)Abitur

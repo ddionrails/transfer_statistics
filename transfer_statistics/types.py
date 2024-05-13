@@ -22,6 +22,7 @@ class LabeledVariable(TypedDict):
     label: str
     label_de: str
     value_labels: list[str]
+    value_labels_de: list[str]
     values: list[int]
 
 

@@ -18,18 +18,24 @@ EXPECTED_GROUPS = {
         label_de="Altersgruppe",
         values=[1, 2, 3, 4],
         value_labels=["17-29", "30-45", "46-65", "66"],
+        value_labels_de=["17-29", "30-45", "46-65", "66"],
     ),
     "bildungsniveau": LabeledVariable(
         variable="bildungsniveau",
         label="",
         label_de="Bildungsniveau",
-        values=[1, 2, 3, 4, 5],
+        values=[1, 2, 3, 4],
         value_labels=[
+            "No School Degree Yet",
+            "Secondary School Degree",
+            "Intermediate School Degree",
+            "Technical School Degree",
+        ],
+        value_labels_de=[
             "(noch) kein Abschluss",
             "Hauptschule",
             "Realschule",
             "(Fach-)Abitur",
-            "AkademikerIn",
         ],
     ),
 }

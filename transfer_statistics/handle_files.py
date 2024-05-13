@@ -5,8 +5,12 @@ from typing import Literal, Union
 
 from pandas import DataFrame
 
-from transfer_statistics.types import (LabeledVariable, ValueLabels, Variable,
-                                       VariableMetadata)
+from transfer_statistics.types import (
+    LabeledVariable,
+    ValueLabels,
+    Variable,
+    VariableMetadata,
+)
 
 
 def apply_value_labels(
@@ -92,9 +96,11 @@ def read_value_label_metadata(
                     label_de=variables[_id]["label_de"],
                     values=[],
                     value_labels=[],
+                    value_labels_de=[],
                 )
             labeled_variables[_type][_id]["values"].append(int(line["value"]))
-            labeled_variables[_type][_id]["value_labels"].append(line["label_de"])
+            labeled_variables[_type][_id]["value_labels"].append(line["label"])
+            labeled_variables[_type][_id]["value_labels_de"].append(line["label_de"])
     return labeled_variables["group"], labeled_variables["categorical"]
 
 
