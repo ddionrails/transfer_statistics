@@ -1,5 +1,6 @@
 from csv import DictReader
 from itertools import combinations
+from json import dump
 from pathlib import Path
 from typing import Literal, Union
 
@@ -114,3 +115,9 @@ def get_variable_combinations(metadata: VariableMetadata):
 
     group_combinations.extend(list(combinations(group, 2)))
     return group_combinations
+
+
+def write_group_metadata_file(path: Path, value_labels: ValueLabels) -> None:
+    """Write metadata of grouping variables to json file."""
+    with open(path.joinpath("group_metadata.json"), "w", encoding="utf-8") as file:
+        dump(value_labels, file)

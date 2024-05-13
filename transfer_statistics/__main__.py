@@ -31,6 +31,7 @@ from transfer_statistics.handle_files import (
     get_variable_combinations,
     read_value_label_metadata,
     read_variable_metadata,
+    write_group_metadata_file,
 )
 from transfer_statistics.handle_metadata import create_metadata_file
 from transfer_statistics.helpers import multiprocessing_wrapper, row_order
@@ -91,6 +92,7 @@ def cli():
     value_labels, categorical_labels = read_value_label_metadata(
         arguments.metadata_path.joinpath("variable_categories.csv"), metadata
     )
+    write_group_metadata_file(path=output_path, value_labels=value_labels)
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
