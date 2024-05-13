@@ -293,9 +293,9 @@ class TestHandleFiles(TestCase):
             "year": [1999, 1999, 1999],
             "age_gr": ["17-29", "30-45", "46-65"],
             "bildungsniveau": [
-                "(noch) kein Abschluss",
-                "(noch) kein Abschluss",
-                "(noch) kein Abschluss",
+                "No School Degree Yet",
+                "No School Degree Yet",
+                "No School Degree Yet",
             ],
             "mean": [2, 3, 4],
         }
