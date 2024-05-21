@@ -254,7 +254,9 @@ def _calculate_one_categorical_variable_in_parallel(
     del data, data_no_missing
 
     aggregated_dataframe = (
-        data_slice.groupby("syear").value_counts(normalize=True).reset_index()
+        data_slice.groupby(["syear", variable["name"]])
+        .value_counts(normalize=True)
+        .reset_index()
     )
     population = args["data"]["syear"].value_counts().rename("n")
     aggregated_dataframe = aggregated_dataframe.merge(
