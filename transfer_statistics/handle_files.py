@@ -99,6 +99,11 @@ def read_value_label_metadata(
                     value_labels=[],
                     value_labels_de=[],
                 )
+            # Skip same value labels from different datasets
+            # in list is a bit inefficient but this is only done once
+            # on a small amount of data. Rewrite would be waste of time
+            if int(line["value"]) in labeled_variables[_type][_id]["values"]:
+                continue
             labeled_variables[_type][_id]["values"].append(int(line["value"]))
             labeled_variables[_type][_id]["value_labels"].append(line["label"])
             labeled_variables[_type][_id]["value_labels_de"].append(line["label_de"])
@@ -120,4 +125,4 @@ def get_variable_combinations(metadata: VariableMetadata):
 def write_group_metadata_file(path: Path, value_labels: ValueLabels) -> None:
     """Write metadata of grouping variables to json file."""
     with open(path.joinpath("group_metadata.json"), "w", encoding="utf-8") as file:
-        dump(value_labels, file)
+        dump(value_labels, file, ensure_ascii=False)
