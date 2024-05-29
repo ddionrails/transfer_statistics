@@ -254,7 +254,7 @@ def _calculate_one_categorical_variable_in_parallel(
     del data, data_no_missing
 
     aggregated_dataframe = (
-        data_slice.groupby(["syear", variable["name"]])
+        data_slice.groupby(args["grouping_names"], observed=True)
         .value_counts(normalize=True)
         .reset_index()
     )
@@ -262,10 +262,10 @@ def _calculate_one_categorical_variable_in_parallel(
     aggregated_dataframe = aggregated_dataframe.merge(
         population, left_on="syear", right_on="syear"
     )
-    aggregated_dataframe[["lower_confidence", "upper_confidence"]] = (
-        aggregated_dataframe.apply(
-            _calculate_population_confidence_interval, axis=1, args=("proportion", "n")
-        )
+    aggregated_dataframe[
+        ["proportion_lower_confidence", "proportion_upper_confidence"]
+    ] = aggregated_dataframe.apply(
+        _calculate_population_confidence_interval, axis=1, args=("proportion", "n")
     )
 
     # syear is at index 0 and does not need labeling
@@ -286,7 +286,12 @@ def _calculate_population_confidence_interval(row, proportion_column, n_column):
     q = 1 - p
     n = row[n_column]
     stderr = Z_ALPHA * sqrt(p * q / n)
-    return Series({"lower_confidence": p - stderr, "upper_confidence": p + stderr})
+    return Series(
+        {
+            "proportion_lower_confidence": p - stderr,
+            "proportion_upper_confidence": p + stderr,
+        }
+    )
 
 
 def _calculate_one_numerical_variable_in_parallel(
