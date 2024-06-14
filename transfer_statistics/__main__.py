@@ -18,7 +18,7 @@ from numpy import (
     sqrt,
     unique,
 )
-from pandas import DataFrame, Series, concat, read_stata
+from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
@@ -33,7 +33,10 @@ from transfer_statistics.handle_files import (
     read_variable_metadata,
     write_group_metadata_file,
 )
-from transfer_statistics.handle_metadata import create_metadata_file
+from transfer_statistics.handle_metadata import (
+    create_metadata_file,
+    create_variable_metadata_file,
+)
 from transfer_statistics.helpers import multiprocessing_wrapper, row_order
 from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
 
@@ -209,7 +212,7 @@ def handle_categorical_statistics(
         }
 
         arguments = zip(
-            repeat(create_metadata_file),
+            repeat(create_variable_metadata_file),
             repeat(general_arguments),
             metadata[_type],
         )
