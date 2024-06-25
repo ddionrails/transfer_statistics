@@ -34,8 +34,8 @@ from transfer_statistics.handle_files import (
     write_group_metadata_file,
 )
 from transfer_statistics.handle_metadata import (
-    create_metadata_file,
-    create_variable_metadata_file,
+    create_mumerical_variable_metadata_file,
+    create_categorical_variable_metadata_file,
 )
 from transfer_statistics.helpers import multiprocessing_wrapper, row_order
 from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
@@ -150,7 +150,7 @@ def handle_numerical_statistics(
         }
 
         arguments = zip(
-            repeat(create_metadata_file),
+            repeat(create_mumerical_variable_metadata_file),
             repeat(general_arguments),
             metadata[_type],
         )
@@ -212,7 +212,7 @@ def handle_categorical_statistics(
         }
 
         arguments = zip(
-            repeat(create_variable_metadata_file),
+            repeat(create_categorical_variable_metadata_file),
             repeat(general_arguments),
             metadata[_type],
         )

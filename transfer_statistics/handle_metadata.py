@@ -15,7 +15,7 @@ def _get_start_and_end_year(data: DataFrame):
     return int(years.min()), int(years.max())
 
 
-def create_metadata_file(arguments: tuple[GeneralArguments, Variable]):
+def create_mumerical_variable_metadata_file(arguments: tuple[GeneralArguments, Variable]):
     data = arguments[0]["data"]
     variable = arguments[1]
     output_folder = arguments[0]["output_folder"].joinpath(variable["name"])
@@ -52,7 +52,9 @@ def create_metadata_file(arguments: tuple[GeneralArguments, Variable]):
         dump(metadata, fp=file, ensure_ascii=False)
 
 
-def create_variable_metadata_file(arguments: tuple[GeneralArguments, Variable]):
+def create_categorical_variable_metadata_file(
+    arguments: tuple[GeneralArguments, Variable]
+):
     data = arguments[0]["data"]
     variable = arguments[1]
 
