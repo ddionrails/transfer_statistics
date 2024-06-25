@@ -21,6 +21,8 @@ def create_mumerical_variable_metadata_file(arguments: tuple[GeneralArguments, V
     output_folder = arguments[0]["output_folder"].joinpath(variable["name"])
     output_file = output_folder.joinpath("meta.json")
     value_labels: ValueLabels = arguments[0]["value_labels"]
+    grouping_variables_names = list(arguments[0]["value_labels"].get("group", {}).keys())
+
     # TODO: Refactor; fix typing issues and untangle the value_label handling
     if "group" in value_labels:
         value_labels = value_labels["group"]
@@ -43,8 +45,7 @@ def create_mumerical_variable_metadata_file(arguments: tuple[GeneralArguments, V
         "label": variable["label"],
         "label_de": variable["label_de"],
         "variable": variable["name"],
-        "dimensions": dimensions,
-        "groups": groups,
+        "groups": grouping_variables_names,
         "start_year": start_year,
         "end_year": end_year,
     }
@@ -62,6 +63,8 @@ def create_categorical_variable_metadata_file(
     output_file = output_folder.joinpath("meta.json")
 
     value_labels_container = arguments[0]["value_labels"].get("categorical", {})
+    grouping_variables_names = list(arguments[0]["value_labels"].get("group", {}).keys())
+
     values = value_labels_container[variable["name"]].get("values", [])
     value_labels = value_labels_container[variable["name"]].get("value_labels", [])
 
@@ -74,6 +77,7 @@ def create_categorical_variable_metadata_file(
         "variable": variable["name"],
         "values": values,
         "value_labels": value_labels,
+        "groups": grouping_variables_names,
         "start_year": start_year,
         "end_year": end_year,
     }
