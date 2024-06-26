@@ -20,24 +20,9 @@ def create_mumerical_variable_metadata_file(arguments: tuple[GeneralArguments, V
     variable = arguments[1]
     output_folder = arguments[0]["output_folder"].joinpath(variable["name"])
     output_file = output_folder.joinpath("meta.json")
-    value_labels: ValueLabels = arguments[0]["value_labels"]
-    grouping_variables_names = list(arguments[0]["value_labels"].get("group", {}).keys())
+    # TODO: Consolidate value_label handling
+    grouping_variables_names = list(arguments[0]["value_labels"].keys())
 
-    # TODO: Refactor; fix typing issues and untangle the value_label handling
-    if "group" in value_labels:
-        value_labels = value_labels["group"]
-    groups = list(value_labels.values())
-    dimensions = []
-    for group in groups:
-        dimensions.append(
-            {
-                "variable": group["variable"],
-                "label": group["label"],
-                "label_de": group["label_de"],
-                "values": group["values"],
-                "labels": group["value_labels"],
-            }
-        )
     start_year, end_year = _get_start_and_end_year(data[["syear", variable["name"]]])
     metadata: MetadataFile = {
         "dataset": variable["dataset"],
@@ -63,6 +48,7 @@ def create_categorical_variable_metadata_file(
     output_file = output_folder.joinpath("meta.json")
 
     value_labels_container = arguments[0]["value_labels"].get("categorical", {})
+    # TODO: Consolidate value_label handling
     grouping_variables_names = list(arguments[0]["value_labels"].get("group", {}).keys())
 
     values = value_labels_container[variable["name"]].get("values", [])

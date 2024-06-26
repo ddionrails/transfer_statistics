@@ -45,7 +45,6 @@ class MetadataFile(TypedDict):
     label: str
     label_de: str
     variable: str
-    dimensions: list[LabeledVariable]
-    groups: list[LabeledVariable]
+    groups: list[VariableName]
     start_year: int
     end_year: int

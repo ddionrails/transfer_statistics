@@ -144,7 +144,6 @@ def handle_numerical_statistics(
         general_arguments: GeneralArguments = {
             "data": data,
             "grouping_names": _grouping_names,
-            "weight_name": weight_name,
             "value_labels": value_labels,
             "output_folder": output_folder,
         }
@@ -169,6 +168,7 @@ def handle_numerical_statistics(
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
             _grouping_names = ["syear", *names]
+            # TODO: Consolidate value_label handling
             general_arguments = {
                 "data": data,
                 "grouping_names": _grouping_names,
@@ -192,6 +192,7 @@ def handle_categorical_statistics(
     weight_name: str,
 ) -> None:
     _type = "categorical"
+    # TODO: Consolidate value_label handling
     value_labels = {"group": value_labels, "categorical": categorical_labels}
 
     if not output_folder.exists():
