@@ -33,7 +33,10 @@ def apply_value_labels_to_list_of_dict(
     mapping = {}
     for variable in grouping_variables:
         mapping[variable] = dict(
-            zip(value_labels[variable]["values"], value_labels[variable]["value_labels"])
+            zip(
+                value_labels["group"][variable]["values"],
+                value_labels["group"][variable]["value_labels"],
+            )
         )
     for row in rows:
         row["year"] = row["syear"]
