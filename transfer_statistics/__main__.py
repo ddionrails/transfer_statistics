@@ -146,6 +146,7 @@ def handle_numerical_statistics(
         general_arguments: GeneralArguments = {
             "data": data,
             "grouping_names": _grouping_names,
+            "weight_name": weight_name,
             "value_labels": value_labels,
             "output_folder": output_folder,
         }

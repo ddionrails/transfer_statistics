@@ -36,7 +36,6 @@ class GeneralArguments(TypedDict):
     grouping_names: list[str]
     weight_name: str
     value_labels: ValueLabels
-    value_labels_de: ValueLabels
     output_folder: Path
 
 
