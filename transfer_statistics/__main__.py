@@ -132,6 +132,8 @@ def handle_numerical_statistics(
 ) -> None:
     _type = "numerical"
 
+    value_labels = {"group": value_labels}
+
     if not output_folder.exists():
         mkdir(output_folder)
     variable_combinations = get_variable_combinations(metadata=metadata)
