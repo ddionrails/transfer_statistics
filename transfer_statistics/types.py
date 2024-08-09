@@ -57,3 +57,8 @@ type SingleInput = tuple[
 ]
 
 type MultiProcessingInput = zip[SingleInput]
+
+type Year = int
+type ColumnName = str
+type RowValue = str | float | Year
+type ResultRow = dict[ColumnName, RowValue]  # Test

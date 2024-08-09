@@ -7,43 +7,23 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import (
-    NaN,
-    arange,
-    argsort,
-    array2string,
-    isin,
-    isnan,
-    logical_and,
-    sqrt,
-    unique,
-)
+from numpy import (NaN, arange, argsort, array2string, isin, isnan,
+                   logical_and, sqrt, unique)
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
-    bootstrap_median,
-    weighted_boxplot_sections,
-    weighted_mean_and_confidence_interval,
-)
+    bootstrap_median, weighted_boxplot_sections,
+    weighted_mean_and_confidence_interval)
 from transfer_statistics.handle_files import (
-    apply_value_labels,
-    apply_value_labels_to_list_of_dict,
-    get_variable_combinations,
-    read_value_label_metadata,
-    read_variable_metadata,
-    write_group_metadata_file,
-)
+    apply_value_labels, apply_value_labels_to_list_of_dict,
+    get_variable_combinations, read_value_label_metadata,
+    read_variable_metadata, write_group_metadata_file)
 from transfer_statistics.handle_metadata import (
     create_categorical_variable_metadata_file,
-    create_numerical_variable_metadata_file,
-)
+    create_numerical_variable_metadata_file)
 from transfer_statistics.helpers import multiprocessing_wrapper, row_order
-from transfer_statistics.types import (
-    GeneralArguments,
-    MultiProcessingInput,
-    Variable,
-    VariableMetadata,
-)
+from transfer_statistics.types import (GeneralArguments, MultiProcessingInput,
+                                       ResultRow, Variable, VariableMetadata)
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
@@ -169,26 +149,20 @@ def handle_numerical_statistics(
         )
         pool.map(multiprocessing_wrapper, arguments)
 
-    with multiprocessing.Pool(
-        processes=MEDIAN_BOOTSTRAP_PROCESSES
-    ) as median_bootstrap_pool:
+    for group in variable_combinations:
+        names = [variable["name"] for variable in group]
+        _grouping_names = ["syear", *names]
+        # TODO: Consolidate value_label handling
+        general_arguments = {
+            "data": data,
+            "grouping_names": _grouping_names,
+            "weight_name": weight_name,
+            "value_labels": value_labels,
+            "output_folder": output_folder,
+        }
 
-        for group in variable_combinations:
-            names = [variable["name"] for variable in group]
-            _grouping_names = ["syear", *names]
-            # TODO: Consolidate value_label handling
-            general_arguments = {
-                "data": data,
-                "grouping_names": _grouping_names,
-                "weight_name": weight_name,
-                "value_labels": value_labels,
-                "output_folder": output_folder,
-            }
-
-            for variable in metadata[_type]:
-                _parallelize_by_group_numerical(
-                    general_arguments, variable, pool=median_bootstrap_pool
-                )
+        for variable in metadata[_type]:
+            _parallelize_by_group_numerical(general_arguments, variable)
 
 
 def handle_categorical_statistics(
@@ -330,33 +304,42 @@ def _calculate_one_numerical_variable_in_parallel(
 
 
 def _parallelize_by_group_numerical(
-    general_arguments: GeneralArguments, variable: Variable, pool
+    general_arguments: GeneralArguments, variable: Variable
 ):
 
-    dataframe_groups = general_arguments["data"][
+    dataframe = general_arguments["data"]
+    filtered_dataframe = dataframe[
         [
             *general_arguments["grouping_names"],
             variable["name"],
             general_arguments["weight_name"],
         ]
-    ].groupby(general_arguments["grouping_names"])
+    ]
+    dataframe_groups = filtered_dataframe.groupby(general_arguments["grouping_names"])
+
     arguments = []
     for grouped_by, group in dataframe_groups:
-        name_mapping = dict(zip(general_arguments["grouping_names"], grouped_by))
+        grouped_columns: ResultRow = dict(
+            zip(general_arguments["grouping_names"], grouped_by)
+        )
         arguments.append(
             (
-                name_mapping,
+                grouped_columns,
                 group[variable["name"]].to_numpy(),
                 group[general_arguments["weight_name"]].to_numpy(),
             )
         )
-    rows = pool.map(_caclulate_numerical_aggregations_in_parallel, arguments)
 
-    columns_to_label = _filter_year_from_group_names(general_arguments["grouping_names"])
-    rows = apply_value_labels_to_list_of_dict(
-        rows, general_arguments["value_labels"], columns_to_label
-    )
-    _save_list_of_dicts(rows, general_arguments, variable)
+    with multiprocessing.Pool(processes=MEDIAN_BOOTSTRAP_PROCESSES) as pool:
+        rows = pool.map(_caclulate_numerical_aggregations_in_parallel, arguments)
+
+        columns_to_label = _filter_year_from_group_names(
+            general_arguments["grouping_names"]
+        )
+        rows = apply_value_labels_to_list_of_dict(
+            rows, general_arguments["value_labels"], columns_to_label
+        )
+        _save_list_of_dicts(rows, general_arguments, variable)
 
 
 def _save_dataframe(aggregated_dataframe, args, variable):
@@ -378,7 +361,9 @@ def _save_dataframe(aggregated_dataframe, args, variable):
     aggregated_dataframe.to_csv(file_name, index=False)
 
 
-def _save_list_of_dicts(rows, args, variable):
+def _save_list_of_dicts(
+    rows: list[dict[str, str | float]], args: GeneralArguments, variable: Variable
+):
     """Save numeric calculation output to CSV file
 
     Numerical calculations return a dict for each row/grouping.
