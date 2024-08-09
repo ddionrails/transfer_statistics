@@ -34,11 +34,16 @@ from transfer_statistics.handle_files import (
     write_group_metadata_file,
 )
 from transfer_statistics.handle_metadata import (
-    create_numerical_variable_metadata_file,
     create_categorical_variable_metadata_file,
+    create_numerical_variable_metadata_file,
 )
 from transfer_statistics.helpers import multiprocessing_wrapper, row_order
-from transfer_statistics.types import GeneralArguments, Variable, VariableMetadata
+from transfer_statistics.types import (
+    GeneralArguments,
+    MultiProcessingInput,
+    Variable,
+    VariableMetadata,
+)
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
@@ -151,13 +156,13 @@ def handle_numerical_statistics(
             "output_folder": output_folder,
         }
 
-        arguments = zip(
+        arguments: MultiProcessingInput = zip(
             repeat(create_numerical_variable_metadata_file),
             repeat(general_arguments),
             metadata[_type],
         )
         pool.map(multiprocessing_wrapper, arguments)
-        arguments = zip(
+        arguments: MultiProcessingInput = zip(
             repeat(_calculate_one_numerical_variable_in_parallel),
             repeat(general_arguments),
             metadata[_type],
@@ -302,7 +307,7 @@ def _calculate_population_confidence_interval(row, proportion_column, n_column):
 
 
 def _calculate_one_numerical_variable_in_parallel(
-    arguments: tuple[Variable, GeneralArguments]
+    arguments: tuple[GeneralArguments, Variable]
 ):
     args = arguments[0]
     variable = arguments[1]
@@ -374,6 +379,14 @@ def _save_dataframe(aggregated_dataframe, args, variable):
 
 
 def _save_list_of_dicts(rows, args, variable):
+    """Save numeric calculation output to CSV file
+
+    Numerical calculations return a dict for each row/grouping.
+    The keys are the names of the columns and the values are the calculated values or
+    the original values from the grouping process,
+    e.g. "1990" for one row in the year column
+    or "Yes" for one row in a  "Yes"/"No" grouping column/variable.
+    """
 
     labeled_columns = _filter_year_from_group_names(args["grouping_names"])
 

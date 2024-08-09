@@ -6,12 +6,8 @@ from typing import Literal, Union
 
 from pandas import DataFrame
 
-from transfer_statistics.types import (
-    LabeledVariable,
-    ValueLabels,
-    Variable,
-    VariableMetadata,
-)
+from transfer_statistics.types import (LabeledVariable, ValueLabels, Variable,
+                                       VariableMetadata)
 
 
 def apply_value_labels(

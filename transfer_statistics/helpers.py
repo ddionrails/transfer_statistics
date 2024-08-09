@@ -1,16 +1,18 @@
 import sys
 import traceback
 
+from transfer_statistics.types import GeneralArguments, SingleInput, Variable
 
-def multiprocessing_wrapper(arguments) -> None:
+
+def multiprocessing_wrapper(arguments: SingleInput) -> None:
     """Make whole stacktrace available in parent process."""
-    exec_function = arguments[0]
-    arguments = arguments[1:]
+    function_to_execute = arguments[0]
+    function_arguments: tuple[GeneralArguments, Variable] = (arguments[1], arguments[2])
     try:
-        exec_function(arguments)
+        function_to_execute(function_arguments)
     except BaseException as error:
         raise RuntimeError(
-            f"Arguments: {arguments}"
+            f"Arguments: {function_arguments}"
             + "".join(traceback.format_exception(*sys.exc_info()))
         ) from error
 

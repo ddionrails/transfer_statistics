@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TypedDict
+from typing import Callable, ParamSpec, TypedDict
 
 from pandas import DataFrame
 
@@ -48,3 +48,12 @@ class MetadataFile(TypedDict):
     groups: list[VariableName]
     start_year: int
     end_year: int
+
+
+type SingleInput = tuple[
+    Callable[[tuple[GeneralArguments, Variable]], None],
+    GeneralArguments,
+    Variable,
+]
+
+type MultiProcessingInput = zip[SingleInput]
