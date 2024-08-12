@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, ParamSpec, TypedDict
+from typing import Callable, NotRequired, TypedDict
 
 from pandas import DataFrame
 
@@ -28,7 +28,11 @@ class LabeledVariable(TypedDict):
 
 type VariableName = str
 type VariableID = VariableName
-type ValueLabels = dict[VariableID, LabeledVariable]
+
+
+class ValueLabels(TypedDict):
+    categorical: dict[VariableID, LabeledVariable]
+    group: dict[VariableID, LabeledVariable]
 
 
 class GeneralArguments(TypedDict):
@@ -45,6 +49,9 @@ class MetadataFile(TypedDict):
     label: str
     label_de: str
     variable: str
+    values: NotRequired[list[int]]
+    value_labels: NotRequired[list[str]]
+    value_labels_de: NotRequired[list[str]]
     groups: list[VariableName]
     start_year: int
     end_year: int

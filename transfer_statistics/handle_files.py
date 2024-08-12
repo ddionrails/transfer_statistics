@@ -6,8 +6,12 @@ from typing import Literal, Union
 
 from pandas import DataFrame
 
-from transfer_statistics.types import (LabeledVariable, ValueLabels, Variable,
-                                       VariableMetadata)
+from transfer_statistics.types import (
+    LabeledVariable,
+    ValueLabels,
+    Variable,
+    VariableMetadata,
+)
 
 
 def apply_value_labels(
@@ -121,7 +125,7 @@ def get_variable_combinations(metadata: VariableMetadata):
     return group_combinations
 
 
-def write_group_metadata_file(path: Path, value_labels: ValueLabels) -> None:
+def write_group_variables_metadata_file(path: Path, value_labels: ValueLabels) -> None:
     """Write metadata of grouping variables to json file."""
     with open(path.joinpath("group_metadata.json"), "w", encoding="utf-8") as file:
         dump(value_labels, file, ensure_ascii=False)

@@ -7,23 +7,44 @@ from pathlib import Path
 from shutil import rmtree
 from sys import argv
 
-from numpy import (NaN, arange, argsort, array2string, isin, isnan,
-                   logical_and, sqrt, unique)
+from numpy import (
+    NaN,
+    arange,
+    argsort,
+    array2string,
+    isin,
+    isnan,
+    logical_and,
+    sqrt,
+    unique,
+)
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
-    bootstrap_median, weighted_boxplot_sections,
-    weighted_mean_and_confidence_interval)
+    bootstrap_median,
+    weighted_boxplot_sections,
+    weighted_mean_and_confidence_interval,
+)
 from transfer_statistics.handle_files import (
-    apply_value_labels, apply_value_labels_to_list_of_dict,
-    get_variable_combinations, read_value_label_metadata,
-    read_variable_metadata, write_group_metadata_file)
+    apply_value_labels,
+    apply_value_labels_to_list_of_dict,
+    get_variable_combinations,
+    read_value_label_metadata,
+    read_variable_metadata,
+    write_group_variables_metadata_file,
+)
 from transfer_statistics.handle_metadata import (
     create_categorical_variable_metadata_file,
-    create_numerical_variable_metadata_file)
+    create_numerical_variable_metadata_file,
+)
 from transfer_statistics.helpers import multiprocessing_wrapper, row_order
-from transfer_statistics.types import (GeneralArguments, MultiProcessingInput,
-                                       ResultRow, Variable, VariableMetadata)
+from transfer_statistics.types import (
+    GeneralArguments,
+    MultiProcessingInput,
+    ResultRow,
+    Variable,
+    VariableMetadata,
+)
 
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
@@ -77,10 +98,10 @@ def cli():
     metadata = read_variable_metadata(
         arguments.metadata_path.joinpath("variables.csv"), arguments.dataset_name
     )
-    value_labels, categorical_labels = read_value_label_metadata(
+    value_labels, categorical_main_variables_labels = read_value_label_metadata(
         arguments.metadata_path.joinpath("variable_categories.csv"), metadata
     )
-    write_group_metadata_file(path=output_path, value_labels=value_labels)
+    write_group_variables_metadata_file(path=output_path, value_labels=value_labels)
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
@@ -91,7 +112,7 @@ def cli():
         data,
         metadata,
         value_labels,
-        categorical_labels,
+        categorical_main_variables_labels,
         categorical_output_path,
         arguments.weight_field_name,
     )
@@ -169,13 +190,16 @@ def handle_categorical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
     value_labels,
-    categorical_labels,
+    categorical_main_variables_labels,
     output_folder: Path,
     weight_name: str,
 ) -> None:
     _type = "categorical"
-    # TODO: Consolidate value_label handling
-    value_labels = {"group": value_labels, "categorical": categorical_labels}
+
+    value_labels = {
+        "group": value_labels,
+        "categorical": categorical_main_variables_labels,
+    }
 
     if not output_folder.exists():
         mkdir(output_folder)
