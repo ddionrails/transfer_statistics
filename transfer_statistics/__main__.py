@@ -15,13 +15,13 @@ from numpy import (
     isin,
     isnan,
     logical_and,
-    sqrt,
     unique,
 )
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
+    calculate_population_confidence_interval,
     weighted_boxplot_sections,
     weighted_mean_and_confidence_interval,
 )
@@ -50,7 +50,6 @@ from transfer_statistics.types import (
 MINIMAL_GROUP_SIZE = 30
 PROCESSES = 4
 MEDIAN_BOOTSTRAP_PROCESSES = 20
-Z_ALPHA = 1.96
 
 MISSING_VALUES = arange(start=-1, stop=-9, step=-1)
 
@@ -278,7 +277,7 @@ def _calculate_one_categorical_variable_in_parallel(
     aggregated_dataframe[
         ["proportion_lower_confidence", "proportion_upper_confidence"]
     ] = aggregated_dataframe.apply(
-        _calculate_population_confidence_interval, axis=1, args=("proportion", "n")
+        calculate_population_confidence_interval, axis=1, args=("proportion", "n")
     )
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
@@ -290,20 +289,6 @@ def _calculate_one_categorical_variable_in_parallel(
         aggregated_dataframe, args["value_labels"]["categorical"], [variable["name"]]
     )
     _save_dataframe(aggregated_dataframe, args, variable)
-
-
-def _calculate_population_confidence_interval(row, proportion_column, n_column):
-
-    p = row[proportion_column]
-    q = 1 - p
-    n = row[n_column]
-    stderr = Z_ALPHA * sqrt(p * q / n)
-    return Series(
-        {
-            "proportion_lower_confidence": p - stderr,
-            "proportion_upper_confidence": p + stderr,
-        }
-    )
 
 
 def _calculate_one_numerical_variable_in_parallel(

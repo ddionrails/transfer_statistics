@@ -1,15 +1,35 @@
 from itertools import repeat
 from math import sqrt
 
-from numpy import (add, arange, argsort, array, array2string, asarray, average,
-                   cumsum, divide, empty, float64, interp, mean, multiply,
-                   quantile, searchsorted, subtract)
+from numpy import (
+    add,
+    arange,
+    argsort,
+    array,
+    array2string,
+    asarray,
+    average,
+    cumsum,
+    divide,
+    empty,
+    float64,
+    interp,
+    mean,
+    multiply,
+    quantile,
+    searchsorted,
+    subtract,
+)
 from numpy import sum as numpy_sum
 from numpy import unique
 from numpy.random import choice
 from numpy.typing import NDArray
 
+from pandas import Series
+
 from transfer_statistics.helpers import multiprocessing_wrapper
+
+Z_ALPHA = 1.96
 
 
 def bootstrap_median(
@@ -154,3 +174,17 @@ def weighted_mean_and_confidence_interval(
         "mean_lower_confidence": _mean - confidence_interval,
         "mean_upper_confidence": _mean + confidence_interval,
     }
+
+
+def calculate_population_confidence_interval(row, proportion_column, n_column):
+
+    p = row[proportion_column]
+    q = 1 - p
+    n = row[n_column]
+    stderr = Z_ALPHA * sqrt(p * q / n)
+    return Series(
+        {
+            "proportion_lower_confidence": p - stderr,
+            "proportion_upper_confidence": p + stderr,
+        }
+    )
