@@ -5,7 +5,7 @@ from transfer_statistics.types import GeneralArguments, SingleInput, Variable
 
 
 def multiprocessing_wrapper(arguments: SingleInput) -> None:
-    """Make whole stacktrace available in parent process."""
+    """Make whole stacktrace available in parent process when error is raised."""
     function_to_execute = arguments[0]
     function_arguments: tuple[GeneralArguments, Variable] = (arguments[1], arguments[2])
     try:
@@ -17,7 +17,7 @@ def multiprocessing_wrapper(arguments: SingleInput) -> None:
         ) from error
 
 
-def row_order(groups):
+def order_columns_of_row(groups):
     return [
         "year",
         *groups,

@@ -37,11 +37,12 @@ from transfer_statistics.handle_metadata import (
     create_categorical_variable_metadata_file,
     create_numerical_variable_metadata_file,
 )
-from transfer_statistics.helpers import multiprocessing_wrapper, row_order
+from transfer_statistics.helpers import multiprocessing_wrapper, order_columns_of_row
 from transfer_statistics.types import (
     GeneralArguments,
     MultiProcessingInput,
     ResultRow,
+    ValueLabels,
     Variable,
     VariableMetadata,
 )
@@ -108,16 +109,24 @@ def cli():
 
     data = data.replace(MISSING_VALUES, NaN)
 
+    all_value_labels: dict[str, ValueLabels] = {
+        "group": value_labels,
+        "categorical": categorical_main_variables_labels,
+    }
+
     handle_categorical_statistics(
-        data,
-        metadata,
-        value_labels,
-        categorical_main_variables_labels,
-        categorical_output_path,
-        arguments.weight_field_name,
+        data=data,
+        metadata=metadata,
+        all_value_labels=all_value_labels,
+        output_folder=categorical_output_path,
+        weight_name=arguments.weight_field_name,
     )
     handle_numerical_statistics(
-        data, metadata, value_labels, numerical_output_path, arguments.weight_field_name
+        data=data,
+        metadata=metadata,
+        all_value_labels=all_value_labels,
+        output_folder=numerical_output_path,
+        weight_name=arguments.weight_field_name,
     )
 
 
@@ -132,13 +141,11 @@ def _create_variable_folders(variables, output_folder):
 def handle_numerical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
-    value_labels,
+    all_value_labels,
     output_folder: Path,
     weight_name: str,
 ) -> None:
     _type = "numerical"
-
-    value_labels = {"group": value_labels}
 
     if not output_folder.exists():
         mkdir(output_folder)
@@ -148,12 +155,12 @@ def handle_numerical_statistics(
 
     with multiprocessing.Pool(processes=PROCESSES) as pool:
         names = []
-        _grouping_names = ["syear"]
+        _group_by_column_names = ["syear"]
         general_arguments: GeneralArguments = {
             "data": data,
-            "grouping_names": _grouping_names,
+            "grouping_names": _group_by_column_names,
             "weight_name": weight_name,
-            "value_labels": value_labels,
+            "value_labels": all_value_labels,
             "output_folder": output_folder,
         }
 
@@ -172,13 +179,13 @@ def handle_numerical_statistics(
 
     for group in variable_combinations:
         names = [variable["name"] for variable in group]
-        _grouping_names = ["syear", *names]
+        _group_by_column_names = ["syear", *names]
         # TODO: Consolidate value_label handling
         general_arguments = {
             "data": data,
-            "grouping_names": _grouping_names,
+            "grouping_names": _group_by_column_names,
             "weight_name": weight_name,
-            "value_labels": value_labels,
+            "value_labels": all_value_labels,
             "output_folder": output_folder,
         }
 
@@ -189,17 +196,11 @@ def handle_numerical_statistics(
 def handle_categorical_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
-    value_labels,
-    categorical_main_variables_labels,
+    all_value_labels,
     output_folder: Path,
     weight_name: str,
 ) -> None:
     _type = "categorical"
-
-    value_labels = {
-        "group": value_labels,
-        "categorical": categorical_main_variables_labels,
-    }
 
     if not output_folder.exists():
         mkdir(output_folder)
@@ -214,17 +215,17 @@ def handle_categorical_statistics(
             "data": data,
             "grouping_names": _grouping_names,
             "weight_name": weight_name,
-            "value_labels": value_labels,
+            "value_labels": all_value_labels,
             "output_folder": output_folder,
         }
 
-        arguments = zip(
+        arguments: MultiProcessingInput = zip(
             repeat(create_categorical_variable_metadata_file),
             repeat(general_arguments),
             metadata[_type],
         )
         pool.map(multiprocessing_wrapper, arguments)
-        arguments = zip(
+        arguments: MultiProcessingInput = zip(
             repeat(_calculate_one_categorical_variable_in_parallel),
             repeat(general_arguments),
             metadata[_type],
@@ -238,10 +239,10 @@ def handle_categorical_statistics(
                 "data": data,
                 "grouping_names": _grouping_names,
                 "weight_name": weight_name,
-                "value_labels": value_labels,
+                "value_labels": all_value_labels,
                 "output_folder": output_folder,
             }
-            arguments = zip(
+            arguments: MultiProcessingInput = zip(
                 repeat(_calculate_one_categorical_variable_in_parallel),
                 repeat(general_arguments),
                 metadata[_type],
@@ -249,7 +250,9 @@ def handle_categorical_statistics(
             pool.map(multiprocessing_wrapper, arguments)
 
 
-def _filter_year_from_group_names(group_names) -> list[str]:
+def _remove_year_from_group_names(group_names) -> list[str]:
+    if group_names[0] not in ("syear", "year"):
+        raise ValueError("Year column not in correct position.")
     return group_names[1:]
 
 
@@ -278,8 +281,7 @@ def _calculate_one_categorical_variable_in_parallel(
         _calculate_population_confidence_interval, axis=1, args=("proportion", "n")
     )
 
-    # syear is at index 0 and does not need labeling
-    columns_to_label = _filter_year_from_group_names(args["grouping_names"])
+    columns_to_label = _remove_year_from_group_names(args["grouping_names"])
 
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, args["value_labels"]["group"], columns_to_label
@@ -320,7 +322,7 @@ def _calculate_one_numerical_variable_in_parallel(
         )
     )  # type: ignore
 
-    columns_to_label = _filter_year_from_group_names(args["grouping_names"])
+    columns_to_label = _remove_year_from_group_names(args["grouping_names"])
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, args["value_labels"], columns_to_label
     )
@@ -357,7 +359,7 @@ def _parallelize_by_group_numerical(
     with multiprocessing.Pool(processes=MEDIAN_BOOTSTRAP_PROCESSES) as pool:
         rows = pool.map(_caclulate_numerical_aggregations_in_parallel, arguments)
 
-        columns_to_label = _filter_year_from_group_names(
+        columns_to_label = _remove_year_from_group_names(
             general_arguments["grouping_names"]
         )
         rows = apply_value_labels_to_list_of_dict(
@@ -368,7 +370,7 @@ def _parallelize_by_group_numerical(
 
 def _save_dataframe(aggregated_dataframe, args, variable):
 
-    labeled_columns = _filter_year_from_group_names(args["grouping_names"])
+    labeled_columns = _remove_year_from_group_names(args["grouping_names"])
 
     group_file_name = "_".join(labeled_columns)
     if group_file_name:
@@ -397,7 +399,7 @@ def _save_list_of_dicts(
     or "Yes" for one row in a  "Yes"/"No" grouping column/variable.
     """
 
-    labeled_columns = _filter_year_from_group_names(args["grouping_names"])
+    labeled_columns = _remove_year_from_group_names(args["grouping_names"])
 
     group_file_name = "_".join(labeled_columns)
     if group_file_name:
@@ -410,7 +412,7 @@ def _save_list_of_dicts(
     )
 
     with open(file_name, "w", encoding="utf-8") as file:
-        writer = DictWriter(file, fieldnames=row_order(labeled_columns))
+        writer = DictWriter(file, fieldnames=order_columns_of_row(labeled_columns))
         writer.writeheader()
         writer.writerows(rows)
 
