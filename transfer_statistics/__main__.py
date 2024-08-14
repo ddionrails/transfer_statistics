@@ -130,6 +130,11 @@ def cli():
 
 
 def _create_variable_folders(variables, output_folder):
+
+    if output_folder.exists():
+        rmtree(output_folder)
+    mkdir(output_folder)
+
     for variable in variables:
         variable_file_target = output_folder.joinpath(variable["name"])
         if variable_file_target.exists():
@@ -146,8 +151,6 @@ def handle_numerical_statistics(
 ) -> None:
     _type = "numerical"
 
-    if not output_folder.exists():
-        mkdir(output_folder)
     variable_combinations = get_variable_combinations(metadata=metadata)
 
     _create_variable_folders(metadata[_type], output_folder)
@@ -200,10 +203,6 @@ def handle_categorical_statistics(
     weight_name: str,
 ) -> None:
     _type = "categorical"
-
-    if not output_folder.exists():
-        mkdir(output_folder)
-    variable_combinations = get_variable_combinations(metadata=metadata)
 
     _create_variable_folders(metadata[_type], output_folder)
 
