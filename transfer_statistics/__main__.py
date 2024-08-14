@@ -182,7 +182,6 @@ def handle_numerical_statistics(
     for group in variable_combinations:
         names = [variable["name"] for variable in group]
         _group_by_column_names = ["syear", *names]
-        # TODO: Consolidate value_label handling
         general_arguments = {
             "data": data,
             "grouping_names": _group_by_column_names,
@@ -203,6 +202,8 @@ def handle_categorical_statistics(
     weight_name: str,
 ) -> None:
     _type = "categorical"
+
+    variable_combinations = get_variable_combinations(metadata=metadata)
 
     _create_variable_folders(metadata[_type], output_folder)
 
