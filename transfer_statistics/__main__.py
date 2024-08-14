@@ -158,10 +158,44 @@ def handle_statistics(
 
     _create_variable_folders(metadata[_type], output_folder)
 
+    names = []
+    _group_by_column_names = ["syear"]
+    general_arguments: GeneralArguments = {
+        "data": data,
+        "grouping_names": _group_by_column_names,
+        "weight_name": weight_name,
+        "value_labels": all_value_labels,
+        "output_folder": output_folder,
+    }
+
+    if _type == "categorical":
+        metadata_function = create_categorical_variable_metadata_file
+        no_grouping_function = _calculate_one_categorical_variable_in_parallel
+    elif _type == "numerical":
+        metadata_function = create_numerical_variable_metadata_file
+        no_grouping_function = _calculate_one_numerical_variable_in_parallel
+
+    metadata_file_arguments: MultiProcessingInput = zip(
+        repeat(metadata_function),
+        repeat(general_arguments),
+        metadata[_type],
+    )
+    no_grouping_variables_arguments: MultiProcessingInput = zip(
+        repeat(no_grouping_function),
+        repeat(general_arguments),
+        metadata[_type],
+    )
+
     with multiprocessing.Pool(processes=PROCESSES) as pool:
-        names = []
-        _group_by_column_names = ["syear"]
-        general_arguments: GeneralArguments = {
+        pool.map(multiprocessing_wrapper, metadata_file_arguments)
+        del metadata_file_arguments
+        pool.map(multiprocessing_wrapper, no_grouping_variables_arguments)
+        del no_grouping_variables_arguments
+
+    for group in variable_combinations:
+        names = [variable["name"] for variable in group]
+        _group_by_column_names = ["syear", *names]
+        general_arguments = {
             "data": data,
             "grouping_names": _group_by_column_names,
             "weight_name": weight_name,
@@ -170,48 +204,16 @@ def handle_statistics(
         }
 
         if _type == "categorical":
-            metadata_function = create_categorical_variable_metadata_file
-            no_grouping_function = _calculate_one_categorical_variable_in_parallel
-        elif _type == "numerical":
-            metadata_function = create_numerical_variable_metadata_file
-            no_grouping_function = _calculate_one_numerical_variable_in_parallel
-
-        metadata_file_arguments: MultiProcessingInput = zip(
-            repeat(metadata_function),
-            repeat(general_arguments),
-            metadata[_type],
-        )
-        no_grouping_variables_arguments: MultiProcessingInput = zip(
-            repeat(no_grouping_function),
-            repeat(general_arguments),
-            metadata[_type],
-        )
-
-        pool.map(multiprocessing_wrapper, metadata_file_arguments)
-        del metadata_file_arguments
-        pool.map(multiprocessing_wrapper, no_grouping_variables_arguments)
-        del no_grouping_variables_arguments
-
-        for group in variable_combinations:
-            names = [variable["name"] for variable in group]
-            _group_by_column_names = ["syear", *names]
-            general_arguments = {
-                "data": data,
-                "grouping_names": _group_by_column_names,
-                "weight_name": weight_name,
-                "value_labels": all_value_labels,
-                "output_folder": output_folder,
-            }
-            if _type == "categorical":
+            with multiprocessing.Pool(processes=PROCESSES) as pool:
                 arguments: MultiProcessingInput = zip(
                     repeat(_calculate_one_categorical_variable_in_parallel),
                     repeat(general_arguments),
                     metadata[_type],
                 )
                 pool.map(multiprocessing_wrapper, arguments)
-            if _type == "numerical":
-                for variable in metadata[_type]:
-                    _parallelize_by_group_numerical(general_arguments, variable)
+        if _type == "numerical":
+            for variable in metadata[_type]:
+                _parallelize_by_group_numerical(general_arguments, variable)
 
 
 def _remove_year_from_group_names(group_names) -> list[str]:
