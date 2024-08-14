@@ -6,6 +6,7 @@ from os import mkdir
 from pathlib import Path
 from shutil import rmtree
 from sys import argv
+from typing import Literal
 
 from numpy import (
     NaN,
@@ -113,19 +114,21 @@ def cli():
         "categorical": categorical_main_variables_labels,
     }
 
-    handle_categorical_statistics(
+    handle_statistics(
         data=data,
         metadata=metadata,
         all_value_labels=all_value_labels,
         output_folder=categorical_output_path,
         weight_name=arguments.weight_field_name,
+        _type="categorical",
     )
-    handle_numerical_statistics(
+    handle_statistics(
         data=data,
         metadata=metadata,
         all_value_labels=all_value_labels,
         output_folder=numerical_output_path,
         weight_name=arguments.weight_field_name,
+        _type="numerical",
     )
 
 
@@ -142,14 +145,14 @@ def _create_variable_folders(variables, output_folder):
         mkdir(variable_file_target)
 
 
-def handle_numerical_statistics(
+def handle_statistics(
     data: DataFrame,
     metadata: VariableMetadata,
     all_value_labels,
     output_folder: Path,
     weight_name: str,
+    _type: Literal["categorical"] | Literal["numerical"],
 ) -> None:
-    _type = "numerical"
 
     variable_combinations = get_variable_combinations(metadata=metadata)
 
@@ -166,87 +169,49 @@ def handle_numerical_statistics(
             "output_folder": output_folder,
         }
 
-        arguments: MultiProcessingInput = zip(
-            repeat(create_numerical_variable_metadata_file),
+        if _type == "categorical":
+            metadata_function = create_categorical_variable_metadata_file
+            no_grouping_function = _calculate_one_categorical_variable_in_parallel
+        elif _type == "numerical":
+            metadata_function = create_numerical_variable_metadata_file
+            no_grouping_function = _calculate_one_numerical_variable_in_parallel
+
+        metadata_file_arguments: MultiProcessingInput = zip(
+            repeat(metadata_function),
             repeat(general_arguments),
             metadata[_type],
         )
-        pool.map(multiprocessing_wrapper, arguments)
-        arguments: MultiProcessingInput = zip(
-            repeat(_calculate_one_numerical_variable_in_parallel),
+        no_grouping_variables_arguments: MultiProcessingInput = zip(
+            repeat(no_grouping_function),
             repeat(general_arguments),
             metadata[_type],
         )
-        pool.map(multiprocessing_wrapper, arguments)
 
-    for group in variable_combinations:
-        names = [variable["name"] for variable in group]
-        _group_by_column_names = ["syear", *names]
-        general_arguments = {
-            "data": data,
-            "grouping_names": _group_by_column_names,
-            "weight_name": weight_name,
-            "value_labels": all_value_labels,
-            "output_folder": output_folder,
-        }
-
-        for variable in metadata[_type]:
-            _parallelize_by_group_numerical(general_arguments, variable)
-
-
-def handle_categorical_statistics(
-    data: DataFrame,
-    metadata: VariableMetadata,
-    all_value_labels,
-    output_folder: Path,
-    weight_name: str,
-) -> None:
-    _type = "categorical"
-
-    variable_combinations = get_variable_combinations(metadata=metadata)
-
-    _create_variable_folders(metadata[_type], output_folder)
-
-    with multiprocessing.Pool(processes=PROCESSES) as pool:
-        names = []
-        _grouping_names = ["syear"]
-        general_arguments: GeneralArguments = {
-            "data": data,
-            "grouping_names": _grouping_names,
-            "weight_name": weight_name,
-            "value_labels": all_value_labels,
-            "output_folder": output_folder,
-        }
-
-        arguments: MultiProcessingInput = zip(
-            repeat(create_categorical_variable_metadata_file),
-            repeat(general_arguments),
-            metadata[_type],
-        )
-        pool.map(multiprocessing_wrapper, arguments)
-        arguments: MultiProcessingInput = zip(
-            repeat(_calculate_one_categorical_variable_in_parallel),
-            repeat(general_arguments),
-            metadata[_type],
-        )
-        pool.map(multiprocessing_wrapper, arguments)
+        pool.map(multiprocessing_wrapper, metadata_file_arguments)
+        del metadata_file_arguments
+        pool.map(multiprocessing_wrapper, no_grouping_variables_arguments)
+        del no_grouping_variables_arguments
 
         for group in variable_combinations:
             names = [variable["name"] for variable in group]
-            _grouping_names = ["syear", *names]
+            _group_by_column_names = ["syear", *names]
             general_arguments = {
                 "data": data,
-                "grouping_names": _grouping_names,
+                "grouping_names": _group_by_column_names,
                 "weight_name": weight_name,
                 "value_labels": all_value_labels,
                 "output_folder": output_folder,
             }
-            arguments: MultiProcessingInput = zip(
-                repeat(_calculate_one_categorical_variable_in_parallel),
-                repeat(general_arguments),
-                metadata[_type],
-            )
-            pool.map(multiprocessing_wrapper, arguments)
+            if _type == "categorical":
+                arguments: MultiProcessingInput = zip(
+                    repeat(_calculate_one_categorical_variable_in_parallel),
+                    repeat(general_arguments),
+                    metadata[_type],
+                )
+                pool.map(multiprocessing_wrapper, arguments)
+            if _type == "numerical":
+                for variable in metadata[_type]:
+                    _parallelize_by_group_numerical(general_arguments, variable)
 
 
 def _remove_year_from_group_names(group_names) -> list[str]:
