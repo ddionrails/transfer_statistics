@@ -42,7 +42,12 @@ def apply_value_labels_to_list_of_dict(
         row["year"] = row["syear"]
         del row["syear"]
         for variable in grouping_variables:
-            row[variable] = mapping[variable][int(row[variable])]
+            try:
+                row[variable] = mapping[variable][int(row[variable])]
+            except KeyError as error:
+                print(f"Variable: {variable}")
+                print(f"Row: {row}")
+                raise error
 
     return rows
 
