@@ -12,8 +12,7 @@ def multiprocessing_wrapper(arguments: SingleInput) -> None:
         function_to_execute(function_arguments)
     except BaseException as error:
         raise RuntimeError(
-            f"Arguments: {function_arguments}"
-            + "".join(traceback.format_exception(*sys.exc_info()))
+             "".join(traceback.format_exception(*sys.exc_info()))
         ) from error
 
 
