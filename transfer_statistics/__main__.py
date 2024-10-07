@@ -261,9 +261,9 @@ def _calculate_one_categorical_variable_in_parallel(
     ]
     del data, data_no_missing
 
-    grouped_data = data_slice.groupby(args["grouping_names"], observed=True)
+    grouped_data = data_slice.groupby([*args["grouping_names"], variable["name"]], observed=True)
     filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
-    grouped_data = filtered_data.groupby(args["grouping_names"], observed=True)
+    grouped_data = filtered_data.groupby([*args["grouping_names"], variable["name"]], observed=True)
 
     small_n = grouped_data.value_counts().rename("n").reset_index()
     # aggregated_dataframe = concat(
@@ -287,13 +287,18 @@ def _calculate_one_categorical_variable_in_parallel(
         right_on=[*args["grouping_names"], variable["name"]],
     )
 
-    aggregated_dataframe[
-        ["proportion_lower_confidence", "proportion_upper_confidence"]
-    ] = aggregated_dataframe.apply(
-        calculate_population_confidence_interval,
-        axis=1,
-        args=("proportion", "weighted_total"),
-    )
+    try:
+        aggregated_dataframe[
+            ["proportion_lower_confidence", "proportion_upper_confidence"]
+        ] = aggregated_dataframe.apply(
+            calculate_population_confidence_interval,
+            axis=1,
+            args=("proportion", "weighted_total"),
+        )
+    except ValueError as error:
+        if aggregated_dataframe.empty:
+            return None
+        raise error
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
 
@@ -317,6 +322,7 @@ def _calculate_one_categorical_variable_in_parallel(
     ]
 
     _save_dataframe(aggregated_dataframe, args, variable)
+    return None
 
 
 def _calculate_one_numerical_variable_in_parallel(
