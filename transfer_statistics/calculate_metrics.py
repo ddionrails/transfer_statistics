@@ -1,5 +1,6 @@
 from itertools import repeat
 from math import sqrt
+import scipy.stats as stats
 
 from numpy import (
     add,
@@ -168,7 +169,8 @@ def weighted_mean_and_confidence_interval(
                 f"WEIGHTS: {array2string(unique(weights), separator=', ')}"
             )
         ) from error
-    confidence_interval = 0.95 * (standard_deviation / sqrt(values.size))
+    t_score = stats.t.ppf((1 + 0.95) / 2, values.size - 1)
+    confidence_interval = t_score * (standard_deviation / sqrt(values.size))
     return {
         "mean": _mean,
         "mean_lower_confidence": _mean - confidence_interval,
