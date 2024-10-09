@@ -156,6 +156,30 @@ def weighted_boxplot_sections(
 
 
 def weighted_mean_and_confidence_interval(
+    values: NDArray[float64], weights: NDArray[float64], runs: int = 200
+) -> dict[str, float64]:
+    all_indices = arange(0, values.size)
+    _mean = average(values, weights=weights)
+
+    mean_distribution = empty(runs)
+
+    for index, _ in enumerate(mean_distribution):
+        sample_indices = choice(all_indices, size=values.size)
+        sample: NDArray[float64] = values[sample_indices]
+        sample_weights: NDArray[float64] = weights[sample_indices]
+        mean_distribution[index] = average(sample, weights=sample_weights)
+
+    quantiles = quantile(mean_distribution, q=[0.025, 0.975])
+    lower_confidence = subtract(multiply(2, _mean), quantiles[1])
+    upper_confidence = subtract(multiply(2, _mean), quantiles[0])
+    return {
+        "mean": _mean,
+        "mean_lower_confidence": lower_confidence,
+        "mean_upper_confidence": upper_confidence,
+    }
+
+
+def weighted_mean_and_confidence_interval_no_bootstrap(
     values: NDArray[float64], weights: NDArray[float64]
 ) -> dict[str, float64]:
     _mean = average(values, weights=weights)
