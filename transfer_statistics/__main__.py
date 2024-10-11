@@ -226,19 +226,16 @@ def _calculate_weighted_percentage(
     data: DataFrame, group_fields, variable_field, weight_field
 ):
 
-    filtered_data = data.groupby([*group_fields, variable_field], observed=True).filter(
-        lambda size: len(size) > MINIMAL_GROUP_SIZE
-    )
+    data = data[[*group_fields, variable_field, weight_field]]
+
     weighted_sum = (
-        filtered_data.groupby([*group_fields, variable_field], observed=True)[
-            weight_field
-        ]
+        data.groupby([*group_fields, variable_field], observed=True)[weight_field]
         .sum()
         .rename("weighted_count")
         .reset_index()
     )
     total_weight = (
-        filtered_data.groupby(group_fields, observed=True)[weight_field]
+        data.groupby(group_fields, observed=True)[weight_field]
         .sum()
         .rename("weighted_total")
         .reset_index()
@@ -255,30 +252,33 @@ def _calculate_weighted_percentage(
     return merged_dataframe
 
 
+def _remove_missing_and_small_groups(data, variable_name, grouping_names) -> DataFrame:
+    data_no_missing = data[~isin(data[variable_name], MISSING_VALUES)]
+    data_slice = data_no_missing[[*grouping_names, variable_name]]
+
+    grouped_data = data_slice.groupby([*grouping_names, variable_name], observed=True)
+    return grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
+
+
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[GeneralArguments, Variable]
 ) -> None:
     args = arguments[0]
     variable = arguments[1]
     data = args["data"]
-    data_no_missing = data[~isin(data[variable["name"]], MISSING_VALUES)]
-    data_slice = data_no_missing[[*args["grouping_names"], variable["name"]]]
-    weight_data_slice = data_no_missing[
-        [*args["grouping_names"], variable["name"], args["weight_name"]]
-    ]
-    del data, data_no_missing
 
-    grouped_data = data_slice.groupby(
-        [*args["grouping_names"], variable["name"]], observed=True
+    filtered_data = _remove_missing_and_small_groups(
+        data=data, variable_name=variable["name"], grouping_names=args["grouping_names"]
     )
-    filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
+    del data
+
     grouped_data = filtered_data.groupby(
         [*args["grouping_names"], variable["name"]], observed=True
     )
 
     small_n = grouped_data.value_counts().rename("n").reset_index()
     aggregated_dataframe = _calculate_weighted_percentage(
-        weight_data_slice,
+        filtered_data,
         args["grouping_names"],
         variable["name"],
         args["weight_name"],
@@ -338,14 +338,16 @@ def _calculate_one_numerical_variable_in_parallel(
     args = arguments[0]
     variable = arguments[1]
 
-    aggregated_dataframe = (
-        args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
-        .groupby(args["grouping_names"])
-        .apply(
-            _apply_numerical_aggregations,
-            variable_name=variable["name"],
-            weight_name=args["weight_name"],
-        )
+    filtered_data = _remove_missing_and_small_groups(
+        data=args["data"],
+        variable_name=variable["name"],
+        grouping_names=args["grouping_names"],
+    )
+
+    aggregated_dataframe = filtered_data.groupby(args["grouping_names"]).apply(
+        _apply_numerical_aggregations,
+        variable_name=variable["name"],
+        weight_name=args["weight_name"],
     )  # type: ignore
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
@@ -359,15 +361,20 @@ def _parallelize_by_group_numerical(
     general_arguments: GeneralArguments, variable: Variable
 ):
 
-    dataframe = general_arguments["data"]
-    filtered_dataframe = dataframe[
+    filtered_data = _remove_missing_and_small_groups(
+        data=general_arguments["data"],
+        variable_name=variable["name"],
+        grouping_names=general_arguments["grouping_names"],
+    )
+
+    subset_dataframe = filtered_data[
         [
             *general_arguments["grouping_names"],
             variable["name"],
             general_arguments["weight_name"],
         ]
     ]
-    dataframe_groups = filtered_dataframe.groupby(general_arguments["grouping_names"])
+    dataframe_groups = subset_dataframe.groupby(general_arguments["grouping_names"])
 
     arguments = []
     for grouped_by, group in dataframe_groups:
@@ -457,17 +464,6 @@ def _apply_numerical_aggregations(
     values = values[sorter]
     weights = weights[sorter]
 
-    no_missing_selector = logical_and(
-        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
-        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
-    )
-
-    weights = weights[no_missing_selector]
-    values = values[no_missing_selector]
-
-    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
-        return Series(EMPTY_NUMERICAL_RESULT.copy())
-
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
@@ -494,17 +490,6 @@ def _caclulate_numerical_aggregations_in_parallel(
     sorter = argsort(values)
     values = values[sorter]
     weights = weights[sorter]
-
-    no_missing_selector = logical_and(
-        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
-        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
-    )
-
-    weights = weights[no_missing_selector]
-    values = values[no_missing_selector]
-
-    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
-        return name_mapping | EMPTY_NUMERICAL_RESULT.copy()
 
     try:
         output = name_mapping
