@@ -258,7 +258,7 @@ def _remove_missing_and_small_groups(data, variable_name, grouping_names) -> Dat
     grouped_data = data_no_missing.groupby(
         [*grouping_names, variable_name], observed=True
     )
-    return grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
+    return grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE).copy()
 
 
 def _calculate_one_categorical_variable_in_parallel(
