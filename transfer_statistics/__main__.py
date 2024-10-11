@@ -252,13 +252,15 @@ def _calculate_weighted_percentage(
     return merged_dataframe
 
 
-def _remove_missing_and_small_groups(data, variable_name, grouping_names) -> DataFrame:
+def _remove_missing_and_small_groups(
+    data, variable_name, grouping_names, weight_name
+) -> DataFrame:
     data_no_missing = data[~isin(data[variable_name], MISSING_VALUES)]
+    data_slice = data_no_missing[[*grouping_names, variable_name, weight_name]]
 
-    grouped_data = data_no_missing.groupby(
-        [*grouping_names, variable_name], observed=True
-    )
-    return grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE).copy()
+    grouped_data = data_slice.groupby([*grouping_names, variable_name], observed=True)
+
+    return grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
 
 
 def _calculate_one_categorical_variable_in_parallel(
@@ -269,7 +271,10 @@ def _calculate_one_categorical_variable_in_parallel(
     data = args["data"]
 
     filtered_data = _remove_missing_and_small_groups(
-        data=data, variable_name=variable["name"], grouping_names=args["grouping_names"]
+        data=data,
+        variable_name=variable["name"],
+        grouping_names=args["grouping_names"],
+        weight_name=args["weight_name"],
     )
     del data
 
@@ -343,6 +348,7 @@ def _calculate_one_numerical_variable_in_parallel(
         data=args["data"],
         variable_name=variable["name"],
         grouping_names=args["grouping_names"],
+        weight_name=args["weight_name"],
     )
 
     aggregated_dataframe = filtered_data.groupby(args["grouping_names"]).apply(
@@ -366,6 +372,7 @@ def _parallelize_by_group_numerical(
         data=general_arguments["data"],
         variable_name=variable["name"],
         grouping_names=general_arguments["grouping_names"],
+        weight_name=general_arguments["weight_name"],
     )
 
     subset_dataframe = filtered_data[
