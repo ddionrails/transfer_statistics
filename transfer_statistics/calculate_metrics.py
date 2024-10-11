@@ -1,22 +1,28 @@
 from itertools import repeat
 from math import sqrt
+import scipy.stats as stats
 
 from numpy import (
+    add,
     arange,
     argsort,
     array,
+    array2string,
     asarray,
     average,
     cumsum,
+    divide,
     empty,
     float64,
     interp,
+    mean,
     multiply,
     quantile,
     searchsorted,
     subtract,
 )
 from numpy import sum as numpy_sum
+from numpy import unique
 from numpy.random import choice
 from numpy.typing import NDArray
 
@@ -61,30 +67,6 @@ def bootstrap_median(
     }
 
 
-def weighted_mean_and_confidence_interval(
-    values: NDArray[float64], weights: NDArray[float64], runs: int = 200
-) -> dict[str, float64]:
-    all_indices = arange(0, values.size)
-    _mean = average(values, weights=weights)
-
-    mean_distribution = empty(runs)
-
-    for index, _ in enumerate(mean_distribution):
-        sample_indices = choice(all_indices, size=values.size)
-        sample: NDArray[float64] = values[sample_indices]
-        sample_weights: NDArray[float64] = weights[sample_indices]
-        mean_distribution[index] = average(sample, weights=sample_weights)
-
-    quantiles = quantile(mean_distribution, q=[0.025, 0.975])
-    lower_confidence = subtract(multiply(2, _mean), quantiles[1])
-    upper_confidence = subtract(multiply(2, _mean), quantiles[0])
-    return {
-        "mean": _mean,
-        "mean_lower_confidence": lower_confidence,
-        "mean_upper_confidence": upper_confidence,
-    }
-
-
 def _parallel_bootstrap_median(arguments) -> float64:
     values = arguments[0]
     weights = arguments[1]
@@ -110,6 +92,38 @@ def weighted_median(values: NDArray[float64], weights: NDArray[float64]) -> floa
     weighted_median_value = values_sorted[median_index]
 
     return weighted_median_value
+
+
+def weighted_median_slow(values: NDArray[float64], weights: NDArray[float64]) -> float64:
+    """Calculate weighted median on already sorted values."""
+
+    weights_total = numpy_sum(weights)
+    weights_total_halfed = divide(numpy_sum(weights), 2)
+
+    lower_weights_cumulated: float64 = float64(0.0)
+    upper_weights_cumulated: float64 = weights_total - weights[0]
+    median = float64(0.0)
+
+    for index in range(1, weights.size - 1):
+        upper_weights_cumulated = subtract(upper_weights_cumulated, weights[index + 1])
+
+        if (
+            lower_weights_cumulated < weights_total_halfed
+            and upper_weights_cumulated < weights_total_halfed
+        ):
+            median = values[index]
+            break
+        if (
+            lower_weights_cumulated == weights_total_halfed
+            and upper_weights_cumulated < weights_total_halfed
+            or lower_weights_cumulated < weights_total_halfed
+            and upper_weights_cumulated == weights_total_halfed
+        ):
+            median = mean([values[index], values[index + 1]])
+            break
+        lower_weights_cumulated = add(lower_weights_cumulated, weights[index])
+
+    return median
 
 
 def weighted_boxplot_sections(
@@ -138,6 +152,53 @@ def weighted_boxplot_sections(
         "upper_quartile": _weighted_quartiles[2],
         "lower_whisker": low,
         "upper_whisker": high,
+    }
+
+
+def weighted_mean_and_confidence_interval(
+    values: NDArray[float64], weights: NDArray[float64], runs: int = 200
+) -> dict[str, float64]:
+    all_indices = arange(0, values.size)
+    _mean = average(values, weights=weights)
+
+    mean_distribution = empty(runs)
+
+    for index, _ in enumerate(mean_distribution):
+        sample_indices = choice(all_indices, size=values.size)
+        sample: NDArray[float64] = values[sample_indices]
+        sample_weights: NDArray[float64] = weights[sample_indices]
+        mean_distribution[index] = average(sample, weights=sample_weights)
+
+    quantiles = quantile(mean_distribution, q=[0.025, 0.975])
+    lower_confidence = subtract(multiply(2, _mean), quantiles[1])
+    upper_confidence = subtract(multiply(2, _mean), quantiles[0])
+    return {
+        "mean": _mean,
+        "mean_lower_confidence": lower_confidence,
+        "mean_upper_confidence": upper_confidence,
+    }
+
+
+def weighted_mean_and_confidence_interval_no_bootstrap(
+    values: NDArray[float64], weights: NDArray[float64]
+) -> dict[str, float64]:
+    _mean = average(values, weights=weights)
+    variance = average((values - _mean) ** 2, weights=weights)
+    try:
+        standard_deviation = sqrt(variance)
+    except ValueError as error:
+        raise ValueError(
+            (
+                f"Math error with VARIANCE: {variance}, MEAN: {_mean}, "
+                f"WEIGHTS: {array2string(unique(weights), separator=', ')}"
+            )
+        ) from error
+    t_score = stats.t.ppf((1 + 0.95) / 2, values.size - 1)
+    confidence_interval = t_score * (standard_deviation / sqrt(values.size))
+    return {
+        "mean": _mean,
+        "mean_lower_confidence": _mean - confidence_interval,
+        "mean_upper_confidence": _mean + confidence_interval,
     }
 
 
