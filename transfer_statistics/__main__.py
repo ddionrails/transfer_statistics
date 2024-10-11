@@ -410,7 +410,7 @@ def _save_dataframe(aggregated_dataframe, args, variable):
 
     aggregated_dataframe.rename(columns={"syear": "year"}, inplace=True)
 
-    aggregated_dataframe.to_csv(file_name, index=False)
+    aggregated_dataframe.to_csv(file_name, index=False, float_format="%.5f")
 
 
 def _save_list_of_dicts(
