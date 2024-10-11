@@ -254,9 +254,10 @@ def _calculate_weighted_percentage(
 
 def _remove_missing_and_small_groups(data, variable_name, grouping_names) -> DataFrame:
     data_no_missing = data[~isin(data[variable_name], MISSING_VALUES)]
-    data_slice = data_no_missing[[*grouping_names, variable_name]]
 
-    grouped_data = data_slice.groupby([*grouping_names, variable_name], observed=True)
+    grouped_data = data_no_missing.groupby(
+        [*grouping_names, variable_name], observed=True
+    )
     return grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
 
 
