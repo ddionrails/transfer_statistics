@@ -398,7 +398,7 @@ def _parallelize_by_group_numerical(
         )
 
     with multiprocessing.Pool(processes=MEDIAN_BOOTSTRAP_PROCESSES) as pool:
-        rows = pool.map(_caclulate_numerical_aggregations_in_parallel, arguments)
+        rows = pool.map(_calculate_numerical_aggregations_in_parallel, arguments)
 
         columns_to_label = _remove_year_from_group_names(
             general_arguments["grouping_names"]
@@ -486,7 +486,7 @@ def _apply_numerical_aggregations(
     return Series(output, index=list(output.keys()))
 
 
-def _caclulate_numerical_aggregations_in_parallel(
+def _calculate_numerical_aggregations_in_parallel(
     arguments,
 ) -> Series:
     name_mapping = arguments[0]
