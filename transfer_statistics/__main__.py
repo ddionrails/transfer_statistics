@@ -255,36 +255,47 @@ def _calculate_weighted_percentage(
     return merged_dataframe
 
 
+def _remove_missing_and_small_groups(
+    data, variable_name, grouping_names, weight_name
+) -> DataFrame:
+    data_no_missing = data[~isin(data[variable_name], MISSING_VALUES)]
+    data_slice = data_no_missing[[*grouping_names, variable_name, weight_name]]
+
+    grouped_data = data_slice.groupby([*grouping_names, variable_name], observed=True)
+
+    filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
+    del grouped_data, data_slice, data_no_missing
+    return filtered_data
+
+
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[GeneralArguments, Variable]
 ) -> None:
     args = arguments[0]
     variable = arguments[1]
-    data = args["data"]
-    data_no_missing = data[~isin(data[variable["name"]], MISSING_VALUES)]
-    data_slice = data_no_missing[[*args["grouping_names"], variable["name"]]]
-    weight_data_slice = data_no_missing[
-        [*args["grouping_names"], variable["name"], args["weight_name"]]
+    sub_dataframe_with_weights = _remove_missing_and_small_groups(
+        data=args["data"],
+        variable_name=variable["name"],
+        grouping_names=args["grouping_names"],
+        weight_name=args["weight_name"],
+    )
+    sub_dataframe_no_weights = sub_dataframe_with_weights[
+        [*args["grouping_names"], variable["name"]]
     ]
-    del data, data_no_missing
 
-    grouped_data = data_slice.groupby(
-        [*args["grouping_names"], variable["name"]], observed=True
-    )
-    filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
-    grouped_data = filtered_data.groupby(
+    sub_dataframe_no_weights_grouped = sub_dataframe_no_weights.groupby(
         [*args["grouping_names"], variable["name"]], observed=True
     )
 
-    small_n = grouped_data.value_counts().rename("n").reset_index()
+    small_n = sub_dataframe_no_weights_grouped.value_counts().rename("n").reset_index()
     aggregated_dataframe = _calculate_weighted_percentage(
-        weight_data_slice,
+        sub_dataframe_with_weights,
         args["grouping_names"],
         variable["name"],
         args["weight_name"],
     )
 
-    population = filtered_data["syear"].value_counts().rename("N")
+    population = sub_dataframe_no_weights["syear"].value_counts().rename("N")
     aggregated_dataframe = aggregated_dataframe.merge(
         population, left_on="syear", right_on="syear"
     )
