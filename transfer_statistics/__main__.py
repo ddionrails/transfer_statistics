@@ -256,12 +256,16 @@ def _calculate_weighted_percentage(
 
 
 def _remove_missing_and_small_groups(
-    data, variable_name, grouping_names, weight_name
+    data, variable_name, full_grouping_names, weight_name
 ) -> DataFrame:
+    """full_grouping_names contains varname for categoric and no varname for numeric"""
     data_no_missing = data[~isin(data[variable_name], MISSING_VALUES)]
-    data_slice = data_no_missing[[*grouping_names, variable_name, weight_name]]
+    if variable_name in full_grouping_names:
+        data_slice = data_no_missing[[*full_grouping_names, weight_name]]
+    else:
+        data_slice = data_no_missing[[*full_grouping_names, variable_name, weight_name]]
 
-    grouped_data = data_slice.groupby([*grouping_names, variable_name], observed=True)
+    grouped_data = data_slice.groupby(full_grouping_names, observed=True)
 
     filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
     del grouped_data, data_slice, data_no_missing
@@ -276,7 +280,7 @@ def _calculate_one_categorical_variable_in_parallel(
     sub_dataframe_with_weights = _remove_missing_and_small_groups(
         data=args["data"],
         variable_name=variable["name"],
-        grouping_names=args["grouping_names"],
+        full_grouping_names=[*args["grouping_names"], variable["name"]],
         weight_name=args["weight_name"],
     )
     sub_dataframe_no_weights = sub_dataframe_with_weights[
@@ -348,15 +352,17 @@ def _calculate_one_numerical_variable_in_parallel(
 ):
     args = arguments[0]
     variable = arguments[1]
+    filtered_data = _remove_missing_and_small_groups(
+        data=args["data"],
+        variable_name=variable["name"],
+        full_grouping_names=args["grouping_names"],
+        weight_name=args["weight_name"],
+    )
 
-    aggregated_dataframe = (
-        args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
-        .groupby(args["grouping_names"])
-        .apply(
-            _apply_numerical_aggregations,
-            variable_name=variable["name"],
-            weight_name=args["weight_name"],
-        )
+    aggregated_dataframe = filtered_data.groupby(args["grouping_names"]).apply(
+        _apply_numerical_aggregations,
+        variable_name=variable["name"],
+        weight_name=args["weight_name"],
     )  # type: ignore
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
@@ -370,14 +376,12 @@ def _parallelize_by_group_numerical(
     general_arguments: GeneralArguments, variable: Variable
 ):
 
-    dataframe = general_arguments["data"]
-    filtered_dataframe = dataframe[
-        [
-            *general_arguments["grouping_names"],
-            variable["name"],
-            general_arguments["weight_name"],
-        ]
-    ]
+    filtered_dataframe = _remove_missing_and_small_groups(
+        data=general_arguments["data"],
+        variable_name=variable["name"],
+        full_grouping_names=general_arguments["grouping_names"],
+        weight_name=general_arguments["weight_name"],
+    )
     dataframe_groups = filtered_dataframe.groupby(general_arguments["grouping_names"])
 
     arguments = []
@@ -468,17 +472,6 @@ def _apply_numerical_aggregations(
     values = values[sorter]
     weights = weights[sorter]
 
-    no_missing_selector = logical_and(
-        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
-        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
-    )
-
-    weights = weights[no_missing_selector]
-    values = values[no_missing_selector]
-
-    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
-        return Series(EMPTY_NUMERICAL_RESULT.copy())
-
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
@@ -505,17 +498,6 @@ def _caclulate_numerical_aggregations_in_parallel(
     sorter = argsort(values)
     values = values[sorter]
     weights = weights[sorter]
-
-    no_missing_selector = logical_and(
-        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
-        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
-    )
-
-    weights = weights[no_missing_selector]
-    values = values[no_missing_selector]
-
-    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
-        return name_mapping | EMPTY_NUMERICAL_RESULT.copy()
 
     try:
         output = name_mapping
