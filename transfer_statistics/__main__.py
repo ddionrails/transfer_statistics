@@ -255,51 +255,36 @@ def _calculate_weighted_percentage(
     return merged_dataframe
 
 
-def _remove_missing_and_small_groups(
-    data, variable_name, full_grouping_names, weight_name
-) -> DataFrame:
-    """full_grouping_names contains varname for categoric and no varname for numeric"""
-    data_no_missing = data[~isin(data[variable_name], MISSING_VALUES)]
-    if variable_name in full_grouping_names:
-        data_slice = data_no_missing[[*full_grouping_names, weight_name]]
-    else:
-        data_slice = data_no_missing[[*full_grouping_names, variable_name, weight_name]]
-
-    grouped_data = data_slice.groupby(full_grouping_names, observed=True)
-
-    filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
-    del grouped_data, data_slice, data_no_missing
-    return filtered_data
-
-
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[GeneralArguments, Variable]
 ) -> None:
     args = arguments[0]
     variable = arguments[1]
-    sub_dataframe_with_weights = _remove_missing_and_small_groups(
-        data=args["data"],
-        variable_name=variable["name"],
-        full_grouping_names=[*args["grouping_names"], variable["name"]],
-        weight_name=args["weight_name"],
-    )
-    sub_dataframe_no_weights = sub_dataframe_with_weights[
-        [*args["grouping_names"], variable["name"]]
+    data = args["data"]
+    data_no_missing = data[~isin(data[variable["name"]], MISSING_VALUES)]
+    data_slice = data_no_missing[[*args["grouping_names"], variable["name"]]]
+    weight_data_slice = data_no_missing[
+        [*args["grouping_names"], variable["name"], args["weight_name"]]
     ]
+    del data, data_no_missing
 
-    sub_dataframe_no_weights_grouped = sub_dataframe_no_weights.groupby(
+    grouped_data = data_slice.groupby(
+        [*args["grouping_names"], variable["name"]], observed=True
+    )
+    filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
+    grouped_data = filtered_data.groupby(
         [*args["grouping_names"], variable["name"]], observed=True
     )
 
-    small_n = sub_dataframe_no_weights_grouped.value_counts().rename("n").reset_index()
+    small_n = grouped_data.value_counts().rename("n").reset_index()
     aggregated_dataframe = _calculate_weighted_percentage(
-        sub_dataframe_with_weights,
+        weight_data_slice,
         args["grouping_names"],
         variable["name"],
         args["weight_name"],
     )
 
-    population = sub_dataframe_no_weights["syear"].value_counts().rename("N")
+    population = filtered_data["syear"].value_counts().rename("N")
     aggregated_dataframe = aggregated_dataframe.merge(
         population, left_on="syear", right_on="syear"
     )
@@ -352,17 +337,15 @@ def _calculate_one_numerical_variable_in_parallel(
 ):
     args = arguments[0]
     variable = arguments[1]
-    filtered_data = _remove_missing_and_small_groups(
-        data=args["data"],
-        variable_name=variable["name"],
-        full_grouping_names=args["grouping_names"],
-        weight_name=args["weight_name"],
-    )
 
-    aggregated_dataframe = filtered_data.groupby(args["grouping_names"]).apply(
-        _apply_numerical_aggregations,
-        variable_name=variable["name"],
-        weight_name=args["weight_name"],
+    aggregated_dataframe = (
+        args["data"][[*args["grouping_names"], variable["name"], args["weight_name"]]]
+        .groupby(args["grouping_names"])
+        .apply(
+            _apply_numerical_aggregations,
+            variable_name=variable["name"],
+            weight_name=args["weight_name"],
+        )
     )  # type: ignore
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
@@ -376,12 +359,14 @@ def _parallelize_by_group_numerical(
     general_arguments: GeneralArguments, variable: Variable
 ):
 
-    filtered_dataframe = _remove_missing_and_small_groups(
-        data=general_arguments["data"],
-        variable_name=variable["name"],
-        full_grouping_names=general_arguments["grouping_names"],
-        weight_name=general_arguments["weight_name"],
-    )
+    dataframe = general_arguments["data"]
+    filtered_dataframe = dataframe[
+        [
+            *general_arguments["grouping_names"],
+            variable["name"],
+            general_arguments["weight_name"],
+        ]
+    ]
     dataframe_groups = filtered_dataframe.groupby(general_arguments["grouping_names"])
 
     arguments = []
@@ -398,7 +383,7 @@ def _parallelize_by_group_numerical(
         )
 
     with multiprocessing.Pool(processes=MEDIAN_BOOTSTRAP_PROCESSES) as pool:
-        rows = pool.map(_calculate_numerical_aggregations_in_parallel, arguments)
+        rows = pool.map(_caclulate_numerical_aggregations_in_parallel, arguments)
 
         columns_to_label = _remove_year_from_group_names(
             general_arguments["grouping_names"]
@@ -425,7 +410,7 @@ def _save_dataframe(aggregated_dataframe, args, variable):
 
     aggregated_dataframe.rename(columns={"syear": "year"}, inplace=True)
 
-    aggregated_dataframe.to_csv(file_name, index=False, float_format="%.5f")
+    aggregated_dataframe.to_csv(file_name, index=False)
 
 
 def _save_list_of_dicts(
@@ -472,6 +457,17 @@ def _apply_numerical_aggregations(
     values = values[sorter]
     weights = weights[sorter]
 
+    no_missing_selector = logical_and(
+        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
+        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
+    )
+
+    weights = weights[no_missing_selector]
+    values = values[no_missing_selector]
+
+    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
+        return Series(EMPTY_NUMERICAL_RESULT.copy())
+
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
@@ -486,7 +482,7 @@ def _apply_numerical_aggregations(
     return Series(output, index=list(output.keys()))
 
 
-def _calculate_numerical_aggregations_in_parallel(
+def _caclulate_numerical_aggregations_in_parallel(
     arguments,
 ) -> Series:
     name_mapping = arguments[0]
@@ -498,6 +494,17 @@ def _calculate_numerical_aggregations_in_parallel(
     sorter = argsort(values)
     values = values[sorter]
     weights = weights[sorter]
+
+    no_missing_selector = logical_and(
+        logical_and(~isin(values, MISSING_VALUES), ~isnan(values)),
+        logical_and(~isin(weights, MISSING_VALUES), ~isnan(weights)),
+    )
+
+    weights = weights[no_missing_selector]
+    values = values[no_missing_selector]
+
+    if values.size == 0 or values.size < MINIMAL_GROUP_SIZE:
+        return name_mapping | EMPTY_NUMERICAL_RESULT.copy()
 
     try:
         output = name_mapping
