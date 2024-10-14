@@ -410,7 +410,7 @@ def _save_dataframe(aggregated_dataframe, args, variable):
 
     aggregated_dataframe.rename(columns={"syear": "year"}, inplace=True)
 
-    aggregated_dataframe.to_csv(file_name, index=False)
+    aggregated_dataframe.to_csv(file_name, index=False, float_format="%.5f")
 
 
 def _save_list_of_dicts(
@@ -436,6 +436,11 @@ def _save_list_of_dicts(
         .joinpath(variable["name"])
         .joinpath(f"{variable['name']}_year{group_file_name}.csv")
     )
+
+    for row in rows:
+        for key, value in row.items():
+            if isinstance(value, float):
+                row[key] = f"{value:.5f}"
 
     with open(file_name, "w", encoding="utf-8") as file:
         writer = DictWriter(file, fieldnames=order_columns_of_row(labeled_columns))
