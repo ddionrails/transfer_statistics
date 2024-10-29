@@ -57,9 +57,7 @@ def bootstrap_median(
             sample_weights = weights[sample_indices]
             median_distribution[index] = weighted_median(sample, sample_weights)
 
-    quantiles = quantile(median_distribution, q=[0.025, 0.975])
-    lower_confidence = subtract(multiply(2, median), quantiles[1])
-    upper_confidence = subtract(multiply(2, median), quantiles[0])
+    lower_confidence, upper_confidence = quantile(median_distribution, q=[0.025, 0.975])
     return {
         "median": median,
         "median_lower_confidence": lower_confidence,
