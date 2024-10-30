@@ -245,7 +245,7 @@ def _calculate_weighted_percentage_and_confidence(
         .reset_index()
     )
 
-    merged_dataframe = weighted_sum.merge(
+    merged_dataframe: DataFrame = weighted_sum.merge(
         total_weight, left_on=group_fields, right_on=group_fields
     )
 
@@ -264,12 +264,16 @@ def _calculate_weighted_percentage_and_confidence(
         weight_field=weight_field,
         total_field="weighted_total",
     )  # type: ignore
-    merged_dataframe["proportion_lower_confidence"] = bootstrap_dataframe[
-        "proportion_lower_confidence"
-    ]
-    merged_dataframe["proportion_upper_confidence"] = bootstrap_dataframe[
-        "proportion_upper_confidence"
-    ]
+    merged_dataframe.insert(
+        2,
+        "proportion_lower_confidence",
+        bootstrap_dataframe["proportion_lower_confidence"],
+    )
+    merged_dataframe.insert(
+        2,
+        "proportion_upper_confidence",
+        bootstrap_dataframe["proportion_upper_confidence"],
+    )
 
     return merged_dataframe
 
