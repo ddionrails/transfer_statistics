@@ -257,23 +257,22 @@ def _calculate_weighted_percentage_and_confidence(
         total_weight, left_on=group_fields, right_on=group_fields
     )
 
-    bootstrap_dataframe = bootstrap_dataframe.groupby(
-        [*group_fields, variable_field]
-    ).apply(
-        weighted_proportional_confidence_interval,
-        weight_field=weight_field,
-        total_field="weighted_total",
-    )  # type: ignore
-    merged_dataframe.insert(
-        2,
-        "proportion_lower_confidence",
-        bootstrap_dataframe["proportion_lower_confidence"],
-    )
-    merged_dataframe.insert(
-        2,
-        "proportion_upper_confidence",
-        bootstrap_dataframe["proportion_upper_confidence"],
-    )
+    merged_dataframe["proportion_lower_confidence"] = 0
+    merged_dataframe["proportion_upper_confidence"] = 0
+
+    totals = {}
+
+    for _, row in merged_dataframe.iterrows():
+        group_values = row[[*group_fields, variable_field]]
+        totals[tuple(group_values)] = row["weighted_total"]
+
+    for groups, data in bootstrap_dataframe.groupby([*group_fields, variable_field]):
+        confidence = DataFrame(
+            weighted_proportional_confidence_interval(
+                data=data, weight_field=weight_field, total_field=totals[groups]
+            )
+        )
+    merged_dataframe = concat([merged_dataframe, confidence], axis=1)
 
     return merged_dataframe
 
