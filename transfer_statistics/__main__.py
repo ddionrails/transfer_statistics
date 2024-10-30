@@ -269,7 +269,7 @@ def _calculate_weighted_percentage_and_confidence(
     for groups, data in bootstrap_dataframe.groupby([*group_fields, variable_field]):
         confidence = DataFrame(
             weighted_proportional_confidence_interval(
-                data=data, weight_field=weight_field, total_field=totals[groups]
+                data=data, weight_field=weight_field, n_size=totals[groups]
             )
         )
     merged_dataframe = concat([merged_dataframe, confidence], axis=1)

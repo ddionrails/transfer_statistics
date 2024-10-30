@@ -154,10 +154,9 @@ def weighted_boxplot_sections(
 
 
 def weighted_proportional_confidence_interval(
-    data: DataFrame, weight_field: str, total_field: str, runs: int = 200
+    data: DataFrame, weight_field: str, n_size: str, runs: int = 200
 ):
     weights = data[weight_field].to_numpy()
-    n_size = data[total_field].f[0]
 
     proportion_distribution = empty(runs)
 
