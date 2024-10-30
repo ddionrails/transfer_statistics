@@ -261,9 +261,9 @@ def _calculate_weighted_percentage_and_confidence(
         [*group_fields, variable_field]
     ).apply(
         weighted_proportional_confidence_interval,
-        axis=1,
-        args=(weight_field, "weighted_total"),
-    )
+        weight_field=weight_field,
+        total_field="weighted_total",
+    )  # type: ignore
     merged_dataframe["proportion_lower_confidence"] = bootstrap_dataframe[
         "proportion_lower_confidence"
     ]
