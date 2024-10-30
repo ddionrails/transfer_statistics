@@ -25,6 +25,7 @@ from transfer_statistics.calculate_metrics import (
     calculate_population_confidence_interval,
     weighted_boxplot_sections,
     weighted_mean_and_confidence_interval,
+    weighted_proportional_confidence_interval,
 )
 from transfer_statistics.handle_files import (
     apply_value_labels,
@@ -222,7 +223,7 @@ def _remove_year_from_group_names(group_names) -> list[str]:
     return group_names[1:]
 
 
-def _calculate_weighted_percentage(
+def _calculate_weighted_percentage_and_confidence(
     data: DataFrame, group_fields, variable_field, weight_field
 ):
 
@@ -252,6 +253,24 @@ def _calculate_weighted_percentage(
         merged_dataframe["weighted_count"] / merged_dataframe["weighted_total"]
     )
 
+    bootstrap_dataframe: DataFrame = filtered_data.merge(
+        total_weight, left_on=group_fields, right_on=group_fields
+    )
+
+    bootstrap_dataframe = bootstrap_dataframe.groupby(
+        [*group_fields, variable_field]
+    ).apply(
+        weighted_proportional_confidence_interval,
+        axis=1,
+        args=(weight_field, "weighted_total"),
+    )
+    merged_dataframe["proportion_lower_confidence"] = bootstrap_dataframe[
+        "proportion_lower_confidence"
+    ]
+    merged_dataframe["proportion_upper_confidence"] = bootstrap_dataframe[
+        "proportion_upper_confidence"
+    ]
+
     return merged_dataframe
 
 
@@ -277,7 +296,7 @@ def _calculate_one_categorical_variable_in_parallel(
     )
 
     small_n = grouped_data.value_counts().rename("n").reset_index()
-    aggregated_dataframe = _calculate_weighted_percentage(
+    aggregated_dataframe = _calculate_weighted_percentage_and_confidence(
         weight_data_slice,
         args["grouping_names"],
         variable["name"],
@@ -293,19 +312,6 @@ def _calculate_one_categorical_variable_in_parallel(
         left_on=[*args["grouping_names"], variable["name"]],
         right_on=[*args["grouping_names"], variable["name"]],
     )
-
-    try:
-        aggregated_dataframe[
-            ["proportion_lower_confidence", "proportion_upper_confidence"]
-        ] = aggregated_dataframe.apply(
-            calculate_population_confidence_interval,
-            axis=1,
-            args=("proportion", "weighted_total"),
-        )
-    except ValueError as error:
-        if aggregated_dataframe.empty:
-            return None
-        raise error
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
 

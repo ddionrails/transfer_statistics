@@ -26,7 +26,7 @@ from numpy import unique
 from numpy.random import choice
 from numpy.typing import NDArray
 
-from pandas import Series
+from pandas import DataFrame, Series
 
 from transfer_statistics.helpers import multiprocessing_wrapper
 
@@ -153,7 +153,49 @@ def weighted_boxplot_sections(
     }
 
 
+def weighted_proportional_confidence_interval(
+    data: DataFrame, weight_field: str, total_field: str, runs: int = 200
+):
+    weights = data[weight_field].to_numpy()
+    n_size = data[total_field][0]
+
+    proportion_distribution = empty(runs)
+
+    for index, _ in enumerate(proportion_distribution):
+        sample = choice(weights, size=weights.size)
+        proportion_distribution[index] = sum(sample)
+
+    lower_quantile, upper_quantile = quantile(proportion_distribution, q=[0.025, 0.975])
+
+    return {
+        "proportion_lower_confidence": lower_quantile / n_size,
+        "proportion_upper_confidence": upper_quantile / n_size,
+    }
+
+
 def weighted_mean_and_confidence_interval(
+    values: NDArray[float64], weights: NDArray[float64], runs: int = 200
+) -> dict[str, float64]:
+    all_indices = arange(0, values.size)
+    _mean = average(values, weights=weights)
+
+    mean_distribution = empty(runs)
+
+    for index, _ in enumerate(mean_distribution):
+        sample_indices = choice(all_indices, size=values.size)
+        sample: NDArray[float64] = values[sample_indices]
+        sample_weights: NDArray[float64] = weights[sample_indices]
+        mean_distribution[index] = average(sample, weights=sample_weights)
+
+    lower_confidence, upper_confidence = quantile(mean_distribution, q=[0.025, 0.975])
+    return {
+        "mean": _mean,
+        "mean_lower_confidence": lower_confidence,
+        "mean_upper_confidence": upper_confidence,
+    }
+
+
+def weighted_mean_and_confidence_interval_no_bootstrap(
     values: NDArray[float64], weights: NDArray[float64]
 ) -> dict[str, float64]:
     _mean = average(values, weights=weights)

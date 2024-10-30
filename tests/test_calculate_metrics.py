@@ -18,9 +18,7 @@ class test_calculate_numerical_metrics(TestCase):
         values = array([1, 2, 3, 4, 5])
         weights = array([1, 1, 1, 1, 1])
         expected_median = float64(3)
-        self.assertEqual(
-            expected_median, weighted_median(values=values, weights=weights)
-        )
+        self.assertEqual(expected_median, weighted_median(values=values, weights=weights))
         # TODO: Take the first median candidate or average two candidates?
         # weights = array([2, 1, 1, 1, 1])
         # expected_median = float64(2.5)
@@ -29,9 +27,7 @@ class test_calculate_numerical_metrics(TestCase):
         # )
         weights = array([3, 1, 1, 1, 1])
         expected_median = float64(2)
-        self.assertEqual(
-            expected_median, weighted_median(values=values, weights=weights)
-        )
+        self.assertEqual(expected_median, weighted_median(values=values, weights=weights))
 
     def test_weighted_mean_and_confidence_interval(self):
         values = array([1, 2, 3, 4, 5])
@@ -39,8 +35,8 @@ class test_calculate_numerical_metrics(TestCase):
         expected_mean = float(3)
         result = weighted_mean_and_confidence_interval(values=values, weights=weights)
         self.assertEqual(expected_mean, result["mean"])
-        self.assertLess(float(expected_mean - result["mean_lower_confidence"]), 1)
-        self.assertGreater(expected_mean - result["mean_upper_confidence"], -1)
+        self.assertLess(result["mean_lower_confidence"], expected_mean)
+        self.assertGreater(result["mean_upper_confidence"], expected_mean)
 
     def test_weighted_boxplot_sections(self):
         values = array([1, 2, 3, 4, 5])
