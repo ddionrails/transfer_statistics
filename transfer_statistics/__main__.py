@@ -18,7 +18,8 @@ from numpy import (
     logical_and,
     unique,
 )
-from pandas import concat, DataFrame, Series, read_stata
+from pandas import concat, Series, read_stata
+from polars import from_pandas, from_dict, DataFrame, col, struct
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
@@ -123,14 +124,14 @@ def cli():
         weight_name=arguments.weight_field_name,
         _type="categorical",
     )
-    handle_statistics(
-        data=data,
-        metadata=metadata,
-        all_value_labels=all_value_labels,
-        output_folder=numerical_output_path,
-        weight_name=arguments.weight_field_name,
-        _type="numerical",
-    )
+    # handle_statistics(
+    #    data=data,
+    #    metadata=metadata,
+    #    all_value_labels=all_value_labels,
+    #    output_folder=numerical_output_path,
+    #    weight_name=arguments.weight_field_name,
+    #    _type="numerical",
+    # )
 
 
 def _create_variable_folders(variables, output_folder):
@@ -227,54 +228,45 @@ def _calculate_weighted_percentage_and_confidence(
     data: DataFrame, group_fields, variable_field, weight_field
 ):
 
-    filtered_data = data.groupby([*group_fields, variable_field], observed=True).filter(
-        lambda size: len(size) > MINIMAL_GROUP_SIZE
+    # filtered_data = data.filter(
+    #    struct([*group_fields, variable_field])
+    #    .n_unique()
+    #    .over([*group_fields, variable_field])
+    #    > MINIMAL_GROUP_SIZE
+    # )
+    filtered_data = data
+    weighted_sum = filtered_data.group_by([*group_fields, variable_field]).agg(
+        col(weight_field).sum().name.map(lambda _: "weighted_count")
     )
-    weighted_sum = (
-        filtered_data.groupby([*group_fields, variable_field], observed=True)[
-            weight_field
-        ]
-        .sum()
-        .rename("weighted_count")
-        .reset_index()
-    )
-    total_weight = (
-        filtered_data.groupby(group_fields, observed=True)[weight_field]
-        .sum()
-        .rename("weighted_total")
-        .reset_index()
+    total_weight = filtered_data.group_by(group_fields).agg(
+        col(weight_field).sum().name.map(lambda _: "weighted_total")
     )
 
-    merged_dataframe: DataFrame = weighted_sum.merge(
-        total_weight, left_on=group_fields, right_on=group_fields
+    merged_dataframe: DataFrame = weighted_sum.join(total_weight, on=group_fields)
+
+    merged_dataframe = (
+        merged_dataframe.lazy()
+        .with_columns((col("weighted_count") / col("weighted_total")).alias("proportion"))
+        .collect()
     )
 
-    merged_dataframe["proportion"] = (
-        merged_dataframe["weighted_count"] / merged_dataframe["weighted_total"]
-    )
-
-    bootstrap_dataframe: DataFrame = filtered_data.merge(
-        total_weight, left_on=group_fields, right_on=group_fields
-    )
-
-    merged_dataframe["proportion_lower_confidence"] = 0
-    merged_dataframe["proportion_upper_confidence"] = 0
+    bootstrap_dataframe: DataFrame = filtered_data.join(total_weight, on=group_fields)
 
     totals = {}
 
-    for _, row in merged_dataframe.iterrows():
-        group_values = row[[*group_fields, variable_field]]
+    for row in merged_dataframe.iter_rows(named=True):
+        group_values = tuple([row[field] for field in [*group_fields, variable_field]])
         totals[tuple(group_values)] = row["weighted_total"]
 
     confidence_calculations = []
-    for groups, data in bootstrap_dataframe.groupby([*group_fields, variable_field]):
+    for groups, data in bootstrap_dataframe.group_by([*group_fields, variable_field]):
         confidence_calculations.append(
             weighted_proportional_confidence_interval(
                 data=data, weight_field=weight_field, n_size=totals[groups]
             )
         )
-    confidence = DataFrame.from_records(confidence_calculations)
-    merged_dataframe = concat([merged_dataframe, confidence], axis=1)
+    confidence = DataFrame(confidence_calculations)
+    merged_dataframe = merged_dataframe.with_columns(confidence)
 
     return merged_dataframe
 
@@ -284,23 +276,23 @@ def _calculate_one_categorical_variable_in_parallel(
 ) -> None:
     args = arguments[0]
     variable = arguments[1]
-    data = args["data"]
-    data_no_missing = data[~isin(data[variable["name"]], MISSING_VALUES)]
-    data_slice = data_no_missing[[*args["grouping_names"], variable["name"]]]
-    weight_data_slice = data_no_missing[
+    data = from_pandas(args["data"])
+    data_no_missing = data.filter(~col(variable["name"]).is_in(MISSING_VALUES))
+    data_slice = data_no_missing.select([*args["grouping_names"], variable["name"]])
+    weight_data_slice = data_no_missing.select(
         [*args["grouping_names"], variable["name"], args["weight_name"]]
-    ]
+    )
     del data, data_no_missing
 
-    grouped_data = data_slice.groupby(
-        [*args["grouping_names"], variable["name"]], observed=True
-    )
-    filtered_data = grouped_data.filter(lambda size: len(size) > MINIMAL_GROUP_SIZE)
-    grouped_data = filtered_data.groupby(
-        [*args["grouping_names"], variable["name"]], observed=True
-    )
+    # filtered_data = data_slice.filter(
+    #     struct([*args["grouping_names"], variable["name"]])
+    #     .n_unique()
+    #     .over([*args["grouping_names"], variable["name"]])
+    #     > MINIMAL_GROUP_SIZE
+    # )
+    grouped_data = data_slice.group_by([*args["grouping_names"], variable["name"]])
 
-    small_n = grouped_data.value_counts().rename("n").reset_index()
+    small_n = grouped_data.len(name="n")
     aggregated_dataframe = _calculate_weighted_percentage_and_confidence(
         weight_data_slice,
         args["grouping_names"],
@@ -308,17 +300,18 @@ def _calculate_one_categorical_variable_in_parallel(
         args["weight_name"],
     )
 
-    population = filtered_data["syear"].value_counts().rename("N")
-    aggregated_dataframe = aggregated_dataframe.merge(
-        population, left_on="syear", right_on="syear"
+    population = data_slice.group_by("syear").agg(
+        col("syear").count().name.map(lambda _: "weighted_total")
     )
-    aggregated_dataframe = aggregated_dataframe.merge(
-        small_n,
-        left_on=[*args["grouping_names"], variable["name"]],
-        right_on=[*args["grouping_names"], variable["name"]],
+
+    aggregated_dataframe = aggregated_dataframe.join(population, on="syear")
+    aggregated_dataframe = aggregated_dataframe.join(
+        small_n, on=[*args["grouping_names"], variable["name"]]
     )
 
     columns_to_label = _remove_year_from_group_names(args["grouping_names"])
+
+    aggregated_dataframe = aggregated_dataframe.to_pandas()
 
     aggregated_dataframe = apply_value_labels(
         aggregated_dataframe, args["value_labels"]["group"], columns_to_label
@@ -333,7 +326,6 @@ def _calculate_one_categorical_variable_in_parallel(
             variable["name"],
             "proportion",
             "n",
-            "N",
             "proportion_lower_confidence",
             "proportion_upper_confidence",
         ]
