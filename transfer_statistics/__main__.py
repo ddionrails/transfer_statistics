@@ -300,7 +300,7 @@ def _calculate_one_categorical_variable_in_parallel(
         ] = aggregated_dataframe.apply(
             calculate_population_confidence_interval,
             axis=1,
-            args=("proportion", "weighted_total"),
+            args=("proportion", "n"),
         )
     except ValueError as error:
         if aggregated_dataframe.empty:
