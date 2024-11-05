@@ -162,7 +162,7 @@ def weighted_proportional_confidence_interval(
 
     for index, _ in enumerate(proportion_distribution):
         sample = choice(weights, size=weights.size)
-        proportion_distribution[index] = sum(sample)
+        proportion_distribution[index] = numpy_sum(sample)
 
     lower_quantile, upper_quantile = quantile(proportion_distribution, q=[0.025, 0.975])
 
