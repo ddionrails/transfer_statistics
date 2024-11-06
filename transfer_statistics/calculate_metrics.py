@@ -26,7 +26,7 @@ from numpy import unique
 from numpy.random import choice
 from numpy.typing import NDArray
 
-from pandas import Series
+from pandas import DataFrame, Series
 
 from transfer_statistics.helpers import multiprocessing_wrapper
 
@@ -174,6 +174,34 @@ def weighted_mean_and_confidence_interval(
         "mean_lower_confidence": _mean - confidence_interval,
         "mean_upper_confidence": _mean + confidence_interval,
     }
+
+
+def calculate_weighted_percentage(
+    data: DataFrame, group_fields, variable_field, weight_field
+):
+
+    weighted_sum = (
+        data.groupby([*group_fields, variable_field], observed=True)[weight_field]
+        .sum()
+        .rename("weighted_count")
+        .reset_index()
+    )
+    total_weight = (
+        data.groupby(group_fields, observed=True)[weight_field]
+        .sum()
+        .rename("weighted_total")
+        .reset_index()
+    )
+
+    merged_dataframe = weighted_sum.merge(
+        total_weight, left_on=group_fields, right_on=group_fields
+    )
+
+    merged_dataframe["proportion"] = (
+        merged_dataframe["weighted_count"] / merged_dataframe["weighted_total"]
+    )
+
+    return merged_dataframe[merged_dataframe["proportion"] < 1.0]
 
 
 def calculate_population_confidence_interval(row, proportion_column, n_column):

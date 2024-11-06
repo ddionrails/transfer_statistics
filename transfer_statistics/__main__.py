@@ -23,6 +23,7 @@ from pandas import concat, DataFrame, Series, read_stata
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
     calculate_population_confidence_interval,
+    calculate_weighted_percentage,
     weighted_boxplot_sections,
     weighted_mean_and_confidence_interval,
 )
@@ -222,39 +223,6 @@ def _remove_year_from_group_names(group_names) -> list[str]:
     return group_names[1:]
 
 
-def _calculate_weighted_percentage(
-    data: DataFrame, group_fields, variable_field, weight_field
-):
-
-    filtered_data = data.groupby([*group_fields, variable_field], observed=True).filter(
-        lambda size: len(size) > MINIMAL_GROUP_SIZE
-    )
-    weighted_sum = (
-        filtered_data.groupby([*group_fields, variable_field], observed=True)[
-            weight_field
-        ]
-        .sum()
-        .rename("weighted_count")
-        .reset_index()
-    )
-    total_weight = (
-        filtered_data.groupby(group_fields, observed=True)[weight_field]
-        .sum()
-        .rename("weighted_total")
-        .reset_index()
-    )
-
-    merged_dataframe = weighted_sum.merge(
-        total_weight, left_on=group_fields, right_on=group_fields
-    )
-
-    merged_dataframe["proportion"] = (
-        merged_dataframe["weighted_count"] / merged_dataframe["weighted_total"]
-    )
-
-    return merged_dataframe[merged_dataframe["proportion"] < 1.0]
-
-
 def _calculate_one_categorical_variable_in_parallel(
     arguments: tuple[GeneralArguments, Variable]
 ) -> None:
@@ -277,7 +245,7 @@ def _calculate_one_categorical_variable_in_parallel(
     )
 
     small_n = grouped_data.value_counts().rename("n").reset_index()
-    aggregated_dataframe = _calculate_weighted_percentage(
+    aggregated_dataframe = calculate_weighted_percentage(
         weight_data_slice,
         args["grouping_names"],
         variable["name"],
