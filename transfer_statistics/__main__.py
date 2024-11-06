@@ -252,7 +252,7 @@ def _calculate_weighted_percentage(
         merged_dataframe["weighted_count"] / merged_dataframe["weighted_total"]
     )
 
-    return merged_dataframe
+    return merged_dataframe[merged_dataframe["proportion"] < 1.0]
 
 
 def _calculate_one_categorical_variable_in_parallel(
@@ -284,7 +284,11 @@ def _calculate_one_categorical_variable_in_parallel(
         args["weight_name"],
     )
 
-    population = filtered_data["syear"].value_counts().rename("N")
+    population = (
+        filtered_data.groupby([*args["grouping_names"], variable["name"]], observed=True)
+        .value_counts()
+        .rename("group_size")
+    )
     aggregated_dataframe = aggregated_dataframe.merge(
         population, left_on="syear", right_on="syear"
     )
@@ -300,7 +304,7 @@ def _calculate_one_categorical_variable_in_parallel(
         ] = aggregated_dataframe.apply(
             calculate_population_confidence_interval,
             axis=1,
-            args=("proportion", "weighted_total"),
+            args=("proportion", "group_size"),
         )
     except ValueError as error:
         if aggregated_dataframe.empty:
@@ -322,7 +326,7 @@ def _calculate_one_categorical_variable_in_parallel(
             variable["name"],
             "proportion",
             "n",
-            "N",
+            "group_size",
             "proportion_lower_confidence",
             "proportion_upper_confidence",
         ]

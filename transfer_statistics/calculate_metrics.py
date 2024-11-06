@@ -181,7 +181,12 @@ def calculate_population_confidence_interval(row, proportion_column, n_column):
     p = row[proportion_column]
     q = 1 - p
     n = row[n_column]
-    stderr = Z_ALPHA * sqrt(p * q / n)
+    try:
+        stderr = Z_ALPHA * sqrt(p * q / (n - 1.0))
+    except ValueError as error:
+        print(f"p: {p} | q: {q} | n: {n}")
+        raise ValueError from error
+
     return Series(
         {
             "proportion_lower_confidence": p - stderr,
