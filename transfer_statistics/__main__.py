@@ -253,12 +253,13 @@ def _calculate_one_categorical_variable_in_parallel(
     )
 
     population = (
-        filtered_data.groupby([*args["grouping_names"], variable["name"]], observed=True)
+        filtered_data[args["grouping_names"]]
+        .groupby(args["grouping_names"], observed=True)
         .value_counts()
         .rename("group_size")
     )
     aggregated_dataframe = aggregated_dataframe.merge(
-        population, left_on="syear", right_on="syear"
+        population, left_on=args["grouping_names"], right_on=args["grouping_names"]
     )
     aggregated_dataframe = aggregated_dataframe.merge(
         small_n,
