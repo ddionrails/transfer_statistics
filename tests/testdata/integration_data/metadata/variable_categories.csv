@@ -1,0 +1,8 @@
+study,dataset,version,variable,value,label,label_de
+soep-core,simulated_data,v39,sex,1,"Female","Weiblich"
+soep-core,simulated_data,v39,sex,2,"Male","Männlich"
+soep-core,simulated_data,v39,pet,1,"Has pet","Hat Haustier"
+soep-core,simulated_data,v39,pet,2,"Has no pet","Hat kein Haustier"
+soep-core,simulated_data,v39,random,1,"Group 1","Gruppe 1"
+soep-core,simulated_data,v39,random,2,"Group 2","Gruppe 2"
+soep-core,simulated_data,v39,random,3,"Group 3","Gruppe 3"

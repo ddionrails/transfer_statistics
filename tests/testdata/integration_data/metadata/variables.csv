@@ -1,0 +1,5 @@
+study,dataset,version,variable,type,template_id,label,label_de,concept,description,description_de,minedition
+soep-core,simulated_data,v39,pet,group,,"Pet ownership","Haustierbesitz",,,,
+soep-core,simulated_data,v39,sex,group,,Sex,Geschlecht,,,,
+soep-core,simulated_data,v39,height,numerical,,Height,Größe,,,,
+soep-core,simulated_data,v39,random,categorical,,Random category,Zufallskategorie,,,,
