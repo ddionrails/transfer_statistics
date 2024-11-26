@@ -18,7 +18,7 @@ from numpy import (
     logical_and,
     unique,
 )
-from pandas import concat, DataFrame, Series, read_stata
+from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
     bootstrap_median,
