@@ -21,7 +21,6 @@ from numpy import (
 from pandas import DataFrame, Series, read_stata
 
 from transfer_statistics.calculate_metrics import (
-    bootstrap_median,
     calculate_population_confidence_interval,
     calculate_weighted_percentage,
     weighted_boxplot_sections,
@@ -107,8 +106,6 @@ def cli():
     data = read_stata(
         arguments.dataset_path, convert_missing=False, convert_categoricals=False
     )
-
-    data = data.replace(MISSING_VALUES, NaN)
 
     all_value_labels: dict[str, ValueLabels] = {
         "group": value_labels,
@@ -449,7 +446,6 @@ def _apply_numerical_aggregations(
     try:
         output = weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
-        output = output | bootstrap_median(values, weights, pool=pool)
         output = output | {"n": values.size}
     except ValueError as error:
         values_to_print = array2string(unique(values), separator=", ")
@@ -488,7 +484,6 @@ def _caclulate_numerical_aggregations_in_parallel(
         output = name_mapping
         output = output | weighted_mean_and_confidence_interval(values, weights)
         output = output | weighted_boxplot_sections(values, weights)
-        output = output | bootstrap_median(values, weights)
         output = output | {"n": values.size}
     except ValueError as error:
         values_to_print = array2string(unique(values), separator=", ")
