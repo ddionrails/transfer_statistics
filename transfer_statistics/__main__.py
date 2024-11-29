@@ -63,9 +63,6 @@ EMPTY_NUMERICAL_RESULT = {
     "upper_quartile": None,
     "lower_whisker": None,
     "upper_whisker": None,
-    "median": None,
-    "median_lower_confidence": None,
-    "median_upper_confidence": None,
     "n": None,
 }
 
@@ -121,10 +118,7 @@ def cli():
         _type="categorical",
     )
     handle_statistics(
-        # Without this some dataframes for variables without groupings
-        # are merged wrong.
-        # TODO: Maybe this could be fixed with initializing an empty df and appending results
-        data=data.replace(MISSING_VALUES, NaN),
+        data=data,
         metadata=metadata,
         all_value_labels=all_value_labels,
         output_folder=numerical_output_path,
